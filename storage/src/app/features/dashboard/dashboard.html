@@ -1,0 +1,57 @@
+<section class="storage-card">
+  <p class="greeting">Chào, {{ userName() }} 👋</p>
+  <h1 class="title">Kho lưu trữ của bạn</h1>
+
+  <div class="usage-ring">
+    <mat-progress-spinner
+      class="ring-track"
+      [mode]="'determinate'"
+      [value]="100"
+      [diameter]="180"
+      [strokeWidth]="10"
+    />
+    <mat-progress-spinner
+      class="ring-value"
+      [mode]="'determinate'"
+      [value]="usedPercent()"
+      [diameter]="180"
+      [strokeWidth]="10"
+    />
+    <div class="ring-center">
+      <span class="ring-percent">{{ usedPercent() }}%</span>
+      <span class="ring-caption">đã dùng</span>
+    </div>
+  </div>
+
+  <div class="usage-stats">
+    <div class="stat">
+      <p class="stat-value">{{ usedLabel() }}</p>
+      <p class="stat-label">Đã dùng</p>
+    </div>
+    <div class="stat">
+      <p class="stat-value">{{ totalLabel() }}</p>
+      <p class="stat-label">Còn trống</p>
+    </div>
+    <div class="stat">
+      <p class="stat-value">{{ fileCount() }}</p>
+      <p class="stat-label">Tệp</p>
+    </div>
+  </div>
+</section>
+
+<section class="recent-section">
+  <div class="recent-header">
+    <h2>Gần đây</h2>
+    <a class="view-all" href="#">
+      Xem tất cả
+      <mat-icon>arrow_forward</mat-icon>
+    </a>
+  </div>
+
+  @if (isLoadingRecent()) {
+    <div class="recent-loading">
+      <mat-progress-spinner mode="indeterminate" [diameter]="20" [strokeWidth]="2" />
+      <span>Đang tải…</span>
+    </div>
+  }
+</section>
