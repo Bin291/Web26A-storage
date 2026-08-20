@@ -1,81 +1,84 @@
 <div class="shell">
-  <header class="topbar">
-    <a class="brand" href="/">
-      <mat-icon class="brand-icon">inventory_2</mat-icon>
-      <span class="brand-name">Storage</span>
-    </a>
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="mi">cloud</span>
+      {{ 'app.title' | t }}
+    </div>
 
-    <label class="search">
-      <mat-icon>search</mat-icon>
-      <input
-        type="text"
-        placeholder="Tìm tên tệp, hoặc Enter để hỏi AI…"
-        aria-label="Tìm tên tệp, hoặc Enter để hỏi AI"
-      />
-    </label>
+    @for (item of browseItems; track item.path) {
+      <a
+        class="nav-item"
+        [routerLink]="item.path"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: item.path === '/files' }"
+      >
+        <span class="mi">{{ item.icon }}</span>
+        {{ item.labelKey | t }}
+      </a>
+    }
 
-    <button
-      type="button"
-      mat-icon-button
-      class="notif-btn"
-      aria-label="Thông báo"
-    >
-      <mat-icon>notifications_none</mat-icon>
-    </button>
-  </header>
+    <div class="nav-section-title">{{ 'nav.categories' | t }}</div>
+    @for (cat of categories; track cat.key) {
+      <a class="nav-item" [routerLink]="['/type', cat.key]" routerLinkActive="active">
+        <span class="mi">{{ cat.icon }}</span>
+        {{ cat.labelKey | t }}
+        <span class="nav-count">{{ categoryCounts()[cat.key] || '' }}</span>
+      </a>
+    }
 
-  <div class="body">
-    <aside class="sidebar">
-      <nav class="sidebar-scroll">
-        <button type="button" mat-flat-button class="new-btn">
-          <mat-icon>add</mat-icon>
-          Mới
-        </button>
+    <div class="sidebar-foot">
+      <a class="nav-item" routerLink="/profile" routerLinkActive="active">
+        <span class="mi">account_circle</span>
+        {{ profile()?.displayName || ('nav.profile' | t) }}
+      </a>
+      <a class="nav-item" routerLink="/settings" routerLinkActive="active">
+        <span class="mi">settings</span>
+        {{ 'nav.settings' | t }}
+      </a>
+      <button class="nav-item" type="button" (click)="toggleLang()">
+        <span class="mi">translate</span>
+        {{ currentLang() }}
+      </button>
+      <!-- LOGIN FEATURE tắt — ẩn nút Đăng xuất
+      <button class="nav-item" type="button" (click)="logout()">
+        <span class="mi">logout</span>
+        {{ 'nav.logout' | t }}
+      </button>
+      -->
+    </div>
+  </aside>
 
-        <a class="nav-item active" href="/" aria-current="page">
-          <mat-icon>home</mat-icon>
-          <span>Trang chủ</span>
-        </a>
+  <main class="content">
+    <div class="topbar">
+      <button class="bell" type="button" (click)="toggleNotif()" aria-label="Thông báo">
+        <span class="mi">notifications</span>
+        @if (notifications.unreadCount() > 0) {
+          <span class="bell-badge">{{ notifications.unreadCount() }}</span>
+        }
+      </button>
+    </div>
 
-        <p class="section-label">DUYỆT</p>
-        <ul class="nav-list">
-          @for (item of browseItems; track item.label) {
-            <li>
-              <a class="nav-item" href="#">
-                <mat-icon>{{ item.icon }}</mat-icon>
-                <span>{{ item.label }}</span>
-              </a>
-            </li>
-          }
-        </ul>
-
-        <p class="empty-folders">Chưa có thư mục</p>
-
-        <p class="section-label">THEO LOẠI</p>
-        <ul class="nav-list category-list">
-          @for (item of categoryItems; track item.label) {
-            <li class="category-item">
-              <span class="category-left">
-                <mat-icon>{{ item.icon }}</mat-icon>
-                <span>{{ item.label }}</span>
-              </span>
-              <span class="category-count">{{ item.count }}</span>
-            </li>
-          }
-        </ul>
-      </nav>
-
-      <div class="sidebar-footer">
-        <div class="avatar" aria-hidden="true">{{ userName().charAt(0) | uppercase }}</div>
-        <span class="user-name">{{ userName() }}</span>
-        <button type="button" mat-icon-button aria-label="Cài đặt">
-          <mat-icon>settings</mat-icon>
-        </button>
+    @if (notifOpen()) {
+      <div class="notif-dropdown">
+        <div class="upload-head">
+          {{ 'nav.shared' | t }}
+          <button class="btn btn-icon" type="button" (click)="markAllRead()" title="Đã đọc tất cả">
+            <span class="mi">done_all</span>
+          </button>
+        </div>
+        @for (n of notifications.items(); track n.id) {
+          <div class="notif-item" [class.unread]="!n.readAt" (click)="openNotif(n)">
+            <div style="font-weight: 600; font-size: 14px">{{ n.title }}</div>
+            @if (n.body) {
+              <div class="card-sub">{{ n.body }}</div>
+            }
+          </div>
+        } @empty {
+          <div class="empty" style="border: none; padding: 24px">—</div>
+        }
       </div>
-    </aside>
+    }
 
-    <main class="content">
-      <router-outlet />
-    </main>
-  </div>
+    <router-outlet />
+  </main>
 </div>

@@ -1,0 +1,39 @@
+<div class="auth-wrap">
+  <form class="auth-card" (submit)="submit($event)">
+    <h1 class="auth-title">{{ 'app.title' | t }}</h1>
+    <p class="auth-sub">{{ 'auth.login' | t }}</p>
+
+    @if (error()) {
+      <div class="auth-error">{{ error() }}</div>
+    }
+
+    <label class="auth-label">{{ 'auth.email' | t }}</label>
+    <input
+      class="auth-input"
+      type="email"
+      autocomplete="email"
+      [value]="email()"
+      (input)="email.set($any($event.target).value)"
+      required
+    />
+
+    <label class="auth-label">{{ 'auth.password' | t }}</label>
+    <input
+      class="auth-input"
+      type="password"
+      autocomplete="current-password"
+      [value]="password()"
+      (input)="password.set($any($event.target).value)"
+      required
+    />
+
+    <button class="auth-btn" type="submit" [disabled]="loading()">
+      {{ loading() ? '…' : ('auth.login' | t) }}
+    </button>
+
+    <p class="auth-foot">
+      {{ 'auth.noAccount' | t }}
+      <a routerLink="/register" class="auth-link">{{ 'auth.register' | t }}</a>
+    </p>
+  </form>
+</div>

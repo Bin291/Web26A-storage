@@ -1,0 +1,49 @@
+<h1 class="page-title">{{ 'nav.shared' | t }}</h1>
+
+@if (loading()) {
+  <div class="empty">{{ 'files.loading' | t }}</div>
+} @else if (items().length === 0) {
+  <div class="empty">
+    <span class="mi" style="font-size: 40px">group</span>
+    <p>{{ 'files.empty' | t }}</p>
+  </div>
+} @else {
+  <table class="file-list">
+    <thead>
+      <tr>
+        <th>{{ 'files.name' | t }}</th>
+        <th>Người chia sẻ</th>
+        <th>{{ 'files.size' | t }}</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (item of items(); track item.shareId) {
+        <tr>
+          <td>
+            @if (item.kind === 'folder') {
+              <span class="mi" style="color: var(--primary)">folder</span> {{ item.folder?.name }}
+            } @else {
+              <span class="mi" style="color: var(--text-muted)">{{ iconOf(item.file?.extension || '') }}</span>
+              {{ item.file?.name }}
+            }
+          </td>
+          <td class="card-sub">{{ item.sharedByEmail || '—' }}</td>
+          <td>{{ item.file ? formatBytes(item.file.size) : '—' }}</td>
+          <td style="text-align: right; white-space: nowrap">
+            @if (item.kind === 'file') {
+              <button class="btn btn-icon" type="button" title="Xem" (click)="open(item)">
+                <span class="mi">visibility</span>
+              </button>
+              @if (item.allowDownload) {
+                <button class="btn btn-icon" type="button" title="Tải xuống" (click)="download(item)">
+                  <span class="mi">download</span>
+                </button>
+              }
+            }
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}

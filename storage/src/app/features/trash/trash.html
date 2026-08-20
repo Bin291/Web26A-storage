@@ -1,0 +1,64 @@
+<div class="toolbar">
+  <h1 class="page-title" style="margin: 0">{{ 'nav.trash' | t }}</h1>
+  <span class="spacer"></span>
+  @if (items().length) {
+    <button class="btn" type="button" (click)="empty()">
+      <span class="mi">delete_forever</span> Dọn thùng rác
+    </button>
+  }
+</div>
+
+@if (loading()) {
+  <div class="empty">{{ 'files.loading' | t }}</div>
+} @else if (items().length === 0) {
+  <div class="empty">
+    <span class="mi" style="font-size: 40px">delete_outline</span>
+    <p>{{ 'files.empty' | t }}</p>
+  </div>
+} @else {
+  <table class="file-list">
+    <thead>
+      <tr>
+        <th>{{ 'files.name' | t }}</th>
+        <th>Vị trí gốc</th>
+        <th>Còn lại</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (item of items(); track item.id) {
+        <tr>
+          <td>
+            <span class="mi" style="color: var(--text-muted)">
+              {{ item.kind === 'folder' ? 'folder' : iconOf(item.extension || '') }}
+            </span>
+            {{ item.name }}
+            @if (item.size) {
+              <span class="card-sub">· {{ formatBytes(item.size) }}</span>
+            }
+          </td>
+          <td>
+            <span class="card-path">
+              @if (item.folderPath.length) {
+                @for (crumb of item.folderPath; track crumb.id; let last = $last) {
+                  {{ crumb.name }}@if (!last) { <span> › </span> }
+                }
+              } @else {
+                {{ 'common.root' | t }}
+              }
+            </span>
+          </td>
+          <td>{{ item.daysUntilPurge }} ngày</td>
+          <td style="text-align: right; white-space: nowrap">
+            <button class="btn btn-icon" type="button" title="Khôi phục" (click)="restore(item)">
+              <span class="mi">restore</span>
+            </button>
+            <button class="btn btn-icon" type="button" title="Xoá vĩnh viễn" (click)="purge(item)">
+              <span class="mi" style="color: var(--danger)">delete_forever</span>
+            </button>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}

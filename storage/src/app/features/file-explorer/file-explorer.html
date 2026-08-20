@@ -1,0 +1,194 @@
+<div
+  [class.dropzone-over]="dragOver()"
+  (dragover)="onDragOver($event)"
+  (dragleave)="onDragLeave()"
+  (drop)="onDrop($event)"
+  (click)="closeMenu()"
+>
+  <div class="toolbar">
+    @if (isFolderLens()) {
+      <nav class="breadcrumb" aria-label="breadcrumb">
+        <a class="crumb" (click)="goCrumb(null)">{{ 'common.root' | t }}</a>
+        @for (crumb of breadcrumb(); track crumb.id; let last = $last) {
+          <span class="mi" style="font-size: 16px">chevron_right</span>
+          <a class="crumb" [class.current]="last" (click)="goCrumb(crumb)">{{ crumb.name }}</a>
+        }
+      </nav>
+    } @else {
+      <h1 class="page-title" style="margin: 0">{{ title() | t }}</h1>
+    }
+
+    <span class="spacer"></span>
+
+    <button class="btn" type="button" (click)="setSort('name')">
+      <span class="mi">sort_by_alpha</span> {{ 'sort.name' | t }}
+    </button>
+    <button class="btn" type="button" (click)="setSort('updatedAt')">
+      <span class="mi">schedule</span> {{ 'sort.date' | t }}
+    </button>
+    <button class="btn" type="button" (click)="setSort('size')">
+      <span class="mi">data_usage</span> {{ 'sort.size' | t }}
+    </button>
+
+    <button class="btn btn-icon" type="button" (click)="settings.toggleView()" [title]="'view.grid' | t">
+      <span class="mi">{{ settings.viewMode() === 'grid' ? 'view_list' : 'grid_view' }}</span>
+    </button>
+
+    @if (isFolderLens()) {
+      <button class="btn" type="button" (click)="createFolder()">
+        <span class="mi">create_new_folder</span> {{ 'action.newFolder' | t }}
+      </button>
+    }
+
+    <label class="btn btn-primary" style="cursor: pointer">
+      <span class="mi">upload</span> {{ 'action.upload' | t }}
+      <input type="file" multiple hidden (change)="onPick($event)" />
+    </label>
+    <label class="btn" style="cursor: pointer" title="Folder">
+      <span class="mi">drive_folder_upload</span>
+      <input type="file" webkitdirectory hidden (change)="onPick($event)" />
+    </label>
+  </div>
+
+  @if (loading()) {
+    <div class="empty">{{ 'files.loading' | t }}</div>
+  } @else if (folders().length === 0 && files().length === 0) {
+    <div class="empty">
+      <div style="font-size: 40px"><span class="mi" style="font-size: 40px">folder_open</span></div>
+      <p>{{ 'files.empty' | t }}</p>
+      <p style="font-size: 13px">{{ 'files.emptyHint' | t }}</p>
+    </div>
+  } @else if (settings.viewMode() === 'grid') {
+    <div class="file-grid">
+      @for (folder of folders(); track folder.id) {
+        <div
+          class="card"
+          (click)="openFolder(folder)"
+          (contextmenu)="openMenu($event, 'folder', folder)"
+        >
+          @if (folder.isStarred) {
+            <span class="mi card-star">star</span>
+          }
+          <div class="card-preview"><span class="mi" style="font-size: 46px; color: var(--primary)">folder</span></div>
+          <div class="card-meta">
+            <div class="card-name">{{ folder.name }}</div>
+            <div class="card-sub">{{ 'common.folder' | t }}</div>
+          </div>
+        </div>
+      }
+      @for (file of files(); track file.id) {
+        <div
+          class="card"
+          (click)="openFile(file)"
+          (contextmenu)="openMenu($event, 'file', file)"
+        >
+          @if (file.isStarred) {
+            <span class="mi card-star">star</span>
+          }
+          <div class="card-preview">
+            @if (file.thumbnailUrl) {
+              <img [src]="file.thumbnailUrl" [alt]="file.name" />
+            } @else {
+              <span class="mi" style="font-size: 42px; color: var(--text-muted)">{{ iconOf(file.extension) }}</span>
+            }
+          </div>
+          <div class="card-meta">
+            <div class="card-name" [title]="file.name">{{ file.name }}</div>
+            <div class="card-sub">
+              {{ formatBytes(file.size) }}
+              @if (file.status !== 'ready') {
+                · {{ file.status }}
+              }
+            </div>
+            @if (file.folderPath && file.folderPath.length) {
+              <div class="card-path" (click)="goToFilePath(file); $event.stopPropagation()">
+                <span class="mi" style="font-size: 13px">folder</span>
+                {{ file.folderPath[file.folderPath.length - 1].name }}
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  } @else {
+    <table class="file-list">
+      <thead>
+        <tr>
+          <th>{{ 'files.name' | t }}</th>
+          <th>{{ 'files.size' | t }}</th>
+          <th>{{ 'files.modified' | t }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (folder of folders(); track folder.id) {
+          <tr (click)="openFolder(folder)" (contextmenu)="openMenu($event, 'folder', folder)">
+            <td><span class="mi" style="color: var(--primary)">folder</span> {{ folder.name }}</td>
+            <td>—</td>
+            <td>{{ folder.updatedAt | date: 'short' }}</td>
+          </tr>
+        }
+        @for (file of files(); track file.id) {
+          <tr (click)="openFile(file)" (contextmenu)="openMenu($event, 'file', file)">
+            <td><span class="mi" style="color: var(--text-muted)">{{ iconOf(file.extension) }}</span> {{ file.name }}</td>
+            <td>{{ formatBytes(file.size) }}</td>
+            <td>{{ file.updatedAt | date: 'short' }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>
+
+<!-- Context menu -->
+@if (menu(); as m) {
+  <div class="menu" [style.left.px]="m.x" [style.top.px]="m.y" (click)="$event.stopPropagation()">
+    @if (m.kind === 'file') {
+      <button class="menu-item" type="button" (click)="download(fileById(m.id))">
+        <span class="mi">download</span> {{ 'action.download' | t }}
+      </button>
+    }
+    <button class="menu-item" type="button" (click)="renameItem()">
+      <span class="mi">edit</span> {{ 'action.rename' | t }}
+    </button>
+    <button class="menu-item" type="button" (click)="toggleStar()">
+      <span class="mi">{{ m.isStarred ? 'star' : 'star_border' }}</span>
+      {{ m.isStarred ? ('action.unstar' | t) : ('action.star' | t) }}
+    </button>
+    <button class="menu-item" type="button" (click)="openShare()">
+      <span class="mi">share</span> Chia sẻ
+    </button>
+    <button class="menu-item danger" type="button" (click)="deleteItem()">
+      <span class="mi">delete</span> {{ 'action.delete' | t }}
+    </button>
+  </div>
+}
+
+<!-- Share dialog -->
+@if (shareTarget(); as t) {
+  <app-share-dialog [target]="t" (closed)="shareTarget.set(null); load()" />
+}
+
+<!-- Upload panel -->
+@if (hasActiveUploads()) {
+  <div class="upload-panel">
+    <div class="upload-head">
+      {{ 'upload.title' | t }}
+      <button class="nav-item" style="width: auto; padding: 0" type="button" (click)="dismissUploads()">
+        <span class="mi">close</span>
+      </button>
+    </div>
+    @for (task of uploads(); track task.id) {
+      <div class="upload-item">
+        <div class="upload-name">{{ task.fileName }}</div>
+        <div class="progress"><div class="progress-bar" [style.width.%]="task.progress()"></div></div>
+        <div class="card-sub">
+          @switch (task.status()) {
+            @case ('done') { {{ 'upload.done' | t }} }
+            @case ('error') { {{ 'upload.error' | t }}: {{ task.error() }} }
+            @default { {{ task.progress() }}% }
+          }
+        </div>
+      </div>
+    }
+  </div>
+}

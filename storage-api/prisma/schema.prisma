@@ -1,0 +1,132 @@
+// Prisma schema — Storage app (theo PLAN_NO_DEPLOY.md mục 7.B + 12.C)
+//
+// Kết nối trực tiếp Postgres connection string của Supabase (service-role).
+// Phân quyền xử lý ở tầng app (NestJS), KHÔNG dùng Postgres RLS — mọi query
+// tự lọc `WHERE userId = ...` tường minh (mục 3).
+//
+// pgvector: cột `DocumentChunk.embedding` là vector(768) khớp gemini-embedding-001.
+// Cần bật extension `vector` (và `unaccent` cho hybrid FTS — mục 8.E) trong Supabase.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector, unaccent, pg_trgm]
+}
+
+model Folder {
+  id        String    @id @default(uuid())
+  name      String
+  parentId  String? // null = thư mục gốc
+  userId    String
+  isStarred Boolean   @default(false) // gắn dấu sao — mục 11.B
+  deletedAt DateTime? // null = active; có giá trị = trong Thùng rác (mục 7.E, 11.K)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  parent   Folder?  @relation("FolderTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children Folder[] @relation("FolderTree")
+  files    File[]
+  shares   Share[] // link chia sẻ công khai — mục 12.C
+
+  @@index([userId, parentId, deletedAt])
+  @@index([parentId])
+}
+
+model File {
+  id           String    @id @default(uuid())
+  name         String // tên hiển thị, VD "DS_diem_danh.xlsx"
+  extension    String // "xlsx", "pdf", "zip", "png"
+  r2Key        String    @unique // key object trên R2 = "{userId}/{id}" — ID cố định (mục 5.A)
+  thumbnailUrl String? // null nếu thumbnail chưa xử lý xong
+  size         BigInt // bytes — bắt buộc BigInt (Int 32-bit tràn ở 2GB, mục 5.D)
+  mimeType     String    @default("application/octet-stream")
+  userId       String
+  folderId     String? // null = nằm ở thư mục gốc
+  status       String    @default("uploading") // uploading | processing | ready | failed | delete_pending
+  errorMessage String? // lý do lỗi khi status = 'failed'
+  isStarred    Boolean   @default(false)
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  folder Folder?         @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  chunks DocumentChunk[]
+  shares Share[]
+
+  @@index([userId, folderId, deletedAt])
+  @@index([userId, deletedAt, status])
+  @@index([folderId])
+}
+
+model DocumentChunk {
+  id         String                     @id @default(uuid())
+  fileId     String
+  content    String // đoạn text đã chunk (~1000 ký tự, mục 8.C)
+  chunkIndex Int
+  embedding  Unsupported("vector(768)")? // khớp gemini-embedding-001 (mục 8.A)
+
+  file File @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@index([fileId])
+}
+
+// Cấp quyền đọc vào 1 target — dùng chung cho CẢ 2 kênh chia sẻ (mục 12.A):
+//   kênh A (trực tiếp): sharedWithUserId có giá trị, token = null
+//   kênh B (link):      token có giá trị, sharedWithUserId = null
+model Share {
+  id       String  @id @default(uuid())
+  userId   String // CHỦ SỞ HỮU (người chia sẻ)
+  fileId   String? // ĐÚNG 1 trong 2 có giá trị (ràng buộc ở tầng app)
+  folderId String?
+
+  // --- Kênh B: link công khai ---
+  token        String? @unique // slug trong URL /s/{token}
+  passwordHash String? // null = không đặt mật khẩu (scrypt, mục 12.C)
+
+  // --- Kênh A: chia sẻ trực tiếp cho 1 user ---
+  sharedWithUserId String? // id user nhận (từ auth.users)
+  sharedWithEmail  String? // email lúc mời — để hiển thị lại trong dialog
+
+  allowDownload Boolean   @default(true) // false = chỉ xem trực tuyến
+  expiresAt     DateTime? // null = không hết hạn
+  viewCount     Int       @default(0)
+  downloadCount Int       @default(0)
+  lastAccessAt  DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  file          File?          @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  folder        Folder?        @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  notifications Notification[]
+
+  @@unique([fileId, sharedWithUserId])
+  @@unique([folderId, sharedWithUserId])
+  @@index([userId])
+  @@index([sharedWithUserId])
+  @@index([fileId])
+  @@index([folderId])
+}
+
+// Thông báo trong app (mục 12.J) — bảng thật vì Realtime-only mất thông báo khi offline.
+model Notification {
+  id       String    @id @default(uuid())
+  userId   String // người NHẬN thông báo
+  type     String // 'share_received' | 'share_revoked' | ...
+  title    String
+  body     String?
+  linkPath String? // VD '/shared'
+  shareId  String?
+  readAt   DateTime? // null = chưa đọc
+  createdAt DateTime @default(now())
+
+  // SetNull (không Cascade): thu hồi chia sẻ vẫn giữ lịch sử thông báo.
+  share Share? @relation(fields: [shareId], references: [id], onDelete: SetNull)
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+}
