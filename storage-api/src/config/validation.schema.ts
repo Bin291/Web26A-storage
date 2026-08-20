@@ -7,7 +7,9 @@ import * as Joi from 'joi';
  */
 export const validationSchema = Joi.object({
   PORT: Joi.number().default(3000),
-  NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
+  NODE_ENV: Joi.string()
+    .valid('development', 'production', 'test')
+    .default('development'),
   WEB_ORIGIN: Joi.string().default('http://localhost:4200'),
 
   DATABASE_URL: Joi.string().required(),
@@ -43,7 +45,9 @@ export const validationSchema = Joi.object({
   GEMINI_OCR_MODEL: Joi.string().default('gemini-3.5-flash'),
   BAZAARLINK_API_KEY: Joi.string().optional().allow(''),
   BAZAARLINK_BASE_URL: Joi.string().optional().allow(''),
-  BAZAARLINK_EMBEDDING_MODEL: Joi.string().default('openai/text-embedding-3-small'),
+  BAZAARLINK_EMBEDDING_MODEL: Joi.string().default(
+    'openai/text-embedding-3-small',
+  ),
 
   HF_API_KEY: Joi.string().optional().allow(''),
   HF_BASE_URL: Joi.string().default('https://router.huggingface.co'),

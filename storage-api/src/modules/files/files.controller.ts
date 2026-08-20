@@ -10,7 +10,11 @@ import {
 } from '@nestjs/common';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ListFilesQueryDto } from './dto/file-query.dto';
-import { MoveFileDto, RenameFileDto, StarFileDto } from './dto/file-mutation.dto';
+import {
+  MoveFileDto,
+  RenameFileDto,
+  StarFileDto,
+} from './dto/file-mutation.dto';
 import { FilesService } from './files.service';
 
 @Controller('files')
@@ -45,17 +49,29 @@ export class FilesController {
   }
 
   @Patch(':id')
-  rename(@CurrentUser('id') userId: string, @Param('id') id: string, @Body() dto: RenameFileDto) {
+  rename(
+    @CurrentUser('id') userId: string,
+    @Param('id') id: string,
+    @Body() dto: RenameFileDto,
+  ) {
     return this.files.rename(userId, id, dto.name);
   }
 
   @Post(':id/move')
-  move(@CurrentUser('id') userId: string, @Param('id') id: string, @Body() dto: MoveFileDto) {
+  move(
+    @CurrentUser('id') userId: string,
+    @Param('id') id: string,
+    @Body() dto: MoveFileDto,
+  ) {
     return this.files.move(userId, id, dto.targetFolderId ?? null);
   }
 
   @Patch(':id/star')
-  star(@CurrentUser('id') userId: string, @Param('id') id: string, @Body() dto: StarFileDto) {
+  star(
+    @CurrentUser('id') userId: string,
+    @Param('id') id: string,
+    @Body() dto: StarFileDto,
+  ) {
     return this.files.setStar(userId, id, dto.isStarred);
   }
 

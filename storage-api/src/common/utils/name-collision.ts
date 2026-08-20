@@ -28,7 +28,10 @@ export function resolveNameCollision(
   return `${base} (${Date.now()})${ext}`;
 }
 
-function splitName(name: string, isFolder: boolean): { base: string; ext: string } {
+function splitName(
+  name: string,
+  isFolder: boolean,
+): { base: string; ext: string } {
   if (isFolder) return { base: name, ext: '' };
   const dot = name.lastIndexOf('.');
   // ".gitignore" (dot=0) coi như không có phần mở rộng.

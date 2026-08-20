@@ -10,7 +10,10 @@ import { File } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService, CompletedPart } from '../storage/storage.service';
 import { FoldersService } from '../folders/folders.service';
-import { resolveNameCollision, extractExtension } from '../../common/utils/name-collision';
+import {
+  resolveNameCollision,
+  extractExtension,
+} from '../../common/utils/name-collision';
 
 export interface InitUploadResult {
   fileId: string;
@@ -32,8 +35,10 @@ export class UploadsService {
     private readonly folders: FoldersService,
     config: ConfigService,
   ) {
-    this.maxFileSize = (config.get<number>('limits.maxFileSizeMb') ?? 2048) * 1024 * 1024;
-    this.chunkSize = (config.get<number>('limits.chunkSizeMb') ?? 8) * 1024 * 1024;
+    this.maxFileSize =
+      (config.get<number>('limits.maxFileSizeMb') ?? 2048) * 1024 * 1024;
+    this.chunkSize =
+      (config.get<number>('limits.chunkSizeMb') ?? 8) * 1024 * 1024;
   }
 
   /** Mở phiên multipart: tạo File row + CreateMultipartUpload trên R2 (mục 5.A). */
@@ -63,7 +68,11 @@ export class UploadsService {
       where: { userId, folderId: folderId ?? null, deletedAt: null },
       select: { name: true },
     });
-    const finalName = resolveNameCollision(name, siblings.map((s) => s.name), false);
+    const finalName = resolveNameCollision(
+      name,
+      siblings.map((s) => s.name),
+      false,
+    );
     const extension = extractExtension(finalName);
 
     const file = await this.prisma.file.create({
@@ -80,10 +89,19 @@ export class UploadsService {
     });
 
     const r2Key = this.storage.objectKey(userId, file.id);
-    const uploadId = await this.storage.createMultipartUpload(r2Key, file.mimeType);
+    const uploadId = await this.storage.createMultipartUpload(
+      r2Key,
+      file.mimeType,
+    );
     await this.prisma.file.update({ where: { id: file.id }, data: { r2Key } });
 
-    return { fileId: file.id, uploadId, r2Key, chunkSize: this.chunkSize, name: finalName };
+    return {
+      fileId: file.id,
+      uploadId,
+      r2Key,
+      chunkSize: this.chunkSize,
+      name: finalName,
+    };
   }
 
   /** Nhận 1 chunk, đẩy lên R2, trả ETag (mục 5.A — chunk đi qua backend, né CORS). */
@@ -99,12 +117,22 @@ export class UploadsService {
     if (!Number.isInteger(partNumber) || partNumber < 1) {
       throw new BadRequestException('partNumber không hợp lệ');
     }
-    const etag = await this.storage.uploadPart(file.r2Key, uploadId, partNumber, body);
+    const etag = await this.storage.uploadPart(
+      file.r2Key,
+      uploadId,
+      partNumber,
+      body,
+    );
     return { ETag: etag, PartNumber: partNumber };
   }
 
   /** Ghép part -> hoàn tất. Set status = 'processing' để pipeline AI/thumbnail xử lý. */
-  async complete(userId: string, fileId: string, uploadId: string, parts: CompletedPart[]): Promise<File> {
+  async complete(
+    userId: string,
+    fileId: string,
+    uploadId: string,
+    parts: CompletedPart[],
+  ): Promise<File> {
     const file = await this.getUploadingFile(userId, fileId);
     await this.storage.completeMultipartUpload(file.r2Key, uploadId, parts);
     // Pipeline AI + thumbnail (mục 5.B, 7) sẽ chuyển 'processing' -> 'ready'/'failed'.
@@ -129,15 +157,23 @@ export class UploadsService {
   }
 
   /** Resume: hỏi R2 phần nào đã nhận (mục 5.A). */
-  async listParts(userId: string, fileId: string, uploadId: string): Promise<CompletedPart[]> {
+  async listParts(
+    userId: string,
+    fileId: string,
+    uploadId: string,
+  ): Promise<CompletedPart[]> {
     const file = await this.getUploadingFile(userId, fileId);
     return this.storage.listParts(file.r2Key, uploadId);
   }
 
-  private async getUploadingFile(userId: string, fileId: string): Promise<File> {
+  private async getUploadingFile(
+    userId: string,
+    fileId: string,
+  ): Promise<File> {
     const file = await this.prisma.file.findUnique({ where: { id: fileId } });
     if (!file) throw new NotFoundException('Phiên upload không tồn tại');
-    if (file.userId !== userId) throw new ForbiddenException('Không có quyền với phiên upload này');
+    if (file.userId !== userId)
+      throw new ForbiddenException('Không có quyền với phiên upload này');
     return file;
   }
 }

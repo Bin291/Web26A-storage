@@ -31,8 +31,10 @@ export class FilesService {
 
   async assertOwned(fileId: string, userId: string): Promise<File> {
     const file = await this.prisma.file.findUnique({ where: { id: fileId } });
-    if (!file || file.deletedAt) throw new NotFoundException('Tệp không tồn tại');
-    if (file.userId !== userId) throw new ForbiddenException('Không có quyền với tệp này');
+    if (!file || file.deletedAt)
+      throw new NotFoundException('Tệp không tồn tại');
+    if (file.userId !== userId)
+      throw new ForbiddenException('Không có quyền với tệp này');
     return file;
   }
 
@@ -69,7 +71,10 @@ export class FilesService {
       let path: BreadcrumbCrumb[] = [];
       if (f.folderId) {
         if (!cache.has(f.folderId)) {
-          cache.set(f.folderId, await this.folders.breadcrumb(userId, f.folderId));
+          cache.set(
+            f.folderId,
+            await this.folders.breadcrumb(userId, f.folderId),
+          );
         }
         path = cache.get(f.folderId)!;
       }
@@ -85,55 +90,99 @@ export class FilesService {
   async rename(userId: string, fileId: string, name: string): Promise<File> {
     const file = await this.assertOwned(fileId, userId);
     const siblings = await this.prisma.file.findMany({
-      where: { userId, folderId: file.folderId, deletedAt: null, NOT: { id: fileId } },
+      where: {
+        userId,
+        folderId: file.folderId,
+        deletedAt: null,
+        NOT: { id: fileId },
+      },
       select: { name: true },
     });
-    const finalName = resolveNameCollision(name, siblings.map((s) => s.name), false);
+    const finalName = resolveNameCollision(
+      name,
+      siblings.map((s) => s.name),
+      false,
+    );
     // Cập nhật cả extension nếu đuôi đổi.
     const dot = finalName.lastIndexOf('.');
-    const extension = dot > 0 ? finalName.slice(dot + 1).toLowerCase() : file.extension;
+    const extension =
+      dot > 0 ? finalName.slice(dot + 1).toLowerCase() : file.extension;
     return this.prisma.file.update({
       where: { id: fileId },
       data: { name: finalName, extension },
     });
   }
 
-  async move(userId: string, fileId: string, targetFolderId: string | null): Promise<File> {
+  async move(
+    userId: string,
+    fileId: string,
+    targetFolderId: string | null,
+  ): Promise<File> {
     const file = await this.assertOwned(fileId, userId);
     if (targetFolderId) await this.folders.assertOwned(targetFolderId, userId);
     const siblings = await this.prisma.file.findMany({
-      where: { userId, folderId: targetFolderId ?? null, deletedAt: null, NOT: { id: fileId } },
+      where: {
+        userId,
+        folderId: targetFolderId ?? null,
+        deletedAt: null,
+        NOT: { id: fileId },
+      },
       select: { name: true },
     });
-    const finalName = resolveNameCollision(file.name, siblings.map((s) => s.name), false);
+    const finalName = resolveNameCollision(
+      file.name,
+      siblings.map((s) => s.name),
+      false,
+    );
     return this.prisma.file.update({
       where: { id: fileId },
       data: { folderId: targetFolderId ?? null, name: finalName },
     });
   }
 
-  async setStar(userId: string, fileId: string, isStarred: boolean): Promise<File> {
+  async setStar(
+    userId: string,
+    fileId: string,
+    isStarred: boolean,
+  ): Promise<File> {
     await this.assertOwned(fileId, userId);
-    return this.prisma.file.update({ where: { id: fileId }, data: { isStarred } });
+    return this.prisma.file.update({
+      where: { id: fileId },
+      data: { isStarred },
+    });
   }
 
   /** Xoá mềm 1 file -> Thùng rác (mục 7.E giai đoạn 1, 11.K). */
   async moveToTrash(userId: string, fileId: string): Promise<void> {
     await this.assertOwned(fileId, userId);
-    await this.prisma.file.update({ where: { id: fileId }, data: { deletedAt: new Date() } });
+    await this.prisma.file.update({
+      where: { id: fileId },
+      data: { deletedAt: new Date() },
+    });
   }
 
   /** Khôi phục file từ Thùng rác, giải trùng tên tại vị trí gốc (mục 7.E, 11.K). */
   async restore(userId: string, fileId: string): Promise<File> {
     const file = await this.prisma.file.findUnique({ where: { id: fileId } });
     if (!file) throw new NotFoundException('Tệp không tồn tại');
-    if (file.userId !== userId) throw new ForbiddenException('Không có quyền với tệp này');
-    if (!file.deletedAt) throw new BadRequestException('Tệp không nằm trong Thùng rác');
+    if (file.userId !== userId)
+      throw new ForbiddenException('Không có quyền với tệp này');
+    if (!file.deletedAt)
+      throw new BadRequestException('Tệp không nằm trong Thùng rác');
     const siblings = await this.prisma.file.findMany({
-      where: { userId, folderId: file.folderId, deletedAt: null, NOT: { id: fileId } },
+      where: {
+        userId,
+        folderId: file.folderId,
+        deletedAt: null,
+        NOT: { id: fileId },
+      },
       select: { name: true },
     });
-    const finalName = resolveNameCollision(file.name, siblings.map((s) => s.name), false);
+    const finalName = resolveNameCollision(
+      file.name,
+      siblings.map((s) => s.name),
+      false,
+    );
     return this.prisma.file.update({
       where: { id: fileId },
       data: { deletedAt: null, name: finalName },
@@ -147,10 +196,15 @@ export class FilesService {
   async permanentDelete(userId: string, fileId: string): Promise<void> {
     const file = await this.prisma.file.findUnique({ where: { id: fileId } });
     if (!file) throw new NotFoundException('Tệp không tồn tại');
-    if (file.userId !== userId) throw new ForbiddenException('Không có quyền với tệp này');
-    if (!file.deletedAt) throw new BadRequestException('Chỉ xoá vĩnh viễn item đang ở Thùng rác');
+    if (file.userId !== userId)
+      throw new ForbiddenException('Không có quyền với tệp này');
+    if (!file.deletedAt)
+      throw new BadRequestException('Chỉ xoá vĩnh viễn item đang ở Thùng rác');
 
-    await this.prisma.file.update({ where: { id: fileId }, data: { status: 'delete_pending' } });
+    await this.prisma.file.update({
+      where: { id: fileId },
+      data: { status: 'delete_pending' },
+    });
     await this.storage.deleteObjects([
       file.r2Key,
       this.storage.thumbnailKey(userId, fileId),
@@ -178,7 +232,10 @@ export class FilesService {
   }
 
   /** Presigned URL tải xuống trực tiếp từ R2 (mục 5.C). */
-  async getDownloadUrl(userId: string, fileId: string): Promise<{ url: string }> {
+  async getDownloadUrl(
+    userId: string,
+    fileId: string,
+  ): Promise<{ url: string }> {
     const file = await this.assertOwned(fileId, userId);
     const url = await this.storage.presignGet(file.r2Key, {
       expiresIn: 600,
@@ -188,7 +245,10 @@ export class FilesService {
   }
 
   /** Presigned URL để xem inline (preview, hỗ trợ Range — mục 5.C). */
-  async getPreviewUrl(userId: string, fileId: string): Promise<{ url: string }> {
+  async getPreviewUrl(
+    userId: string,
+    fileId: string,
+  ): Promise<{ url: string }> {
     const file = await this.assertOwned(fileId, userId);
     const url = await this.storage.presignGet(file.r2Key, {
       expiresIn: 600,

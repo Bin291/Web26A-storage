@@ -9,7 +9,11 @@ import {
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { AbortUploadDto, CompleteUploadDto, InitUploadDto } from './dto/upload.dto';
+import {
+  AbortUploadDto,
+  CompleteUploadDto,
+  InitUploadDto,
+} from './dto/upload.dto';
 import { UploadsService } from './uploads.service';
 
 @Controller('uploads')
@@ -19,7 +23,13 @@ export class UploadsController {
   /** POST /uploads/init — mở phiên multipart. */
   @Post('init')
   init(@CurrentUser('id') userId: string, @Body() dto: InitUploadDto) {
-    return this.uploads.init(userId, dto.name, dto.size, dto.mimeType, dto.folderId ?? null);
+    return this.uploads.init(
+      userId,
+      dto.name,
+      dto.size,
+      dto.mimeType,
+      dto.folderId ?? null,
+    );
   }
 
   /**
@@ -36,7 +46,9 @@ export class UploadsController {
     @Headers('x-part-number') partNumberRaw: string,
   ) {
     if (!fileId || !uploadId || !partNumberRaw) {
-      throw new BadRequestException('Thiếu header x-file-id / x-upload-id / x-part-number');
+      throw new BadRequestException(
+        'Thiếu header x-file-id / x-upload-id / x-part-number',
+      );
     }
     const body = req.body as unknown;
     if (!Buffer.isBuffer(body)) {

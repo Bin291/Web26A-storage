@@ -39,7 +39,8 @@ export class StorageService {
 
   constructor(private readonly config: ConfigService) {
     this.bucket = this.config.get<string>('r2.bucket') ?? 'storage-app';
-    this.publicBaseUrl = this.config.get<string | null>('r2.publicBaseUrl') ?? null;
+    this.publicBaseUrl =
+      this.config.get<string | null>('r2.publicBaseUrl') ?? null;
 
     this.client = new S3Client({
       region: this.config.get<string>('r2.region') ?? 'auto',
@@ -70,7 +71,10 @@ export class StorageService {
 
   // --- Multipart upload (mục 5.A) ---
 
-  async createMultipartUpload(key: string, contentType?: string): Promise<string> {
+  async createMultipartUpload(
+    key: string,
+    contentType?: string,
+  ): Promise<string> {
     const res = await this.client.send(
       new CreateMultipartUploadCommand({
         Bucket: this.bucket,
@@ -123,7 +127,11 @@ export class StorageService {
 
   async abortMultipartUpload(key: string, uploadId: string): Promise<void> {
     await this.client.send(
-      new AbortMultipartUploadCommand({ Bucket: this.bucket, Key: key, UploadId: uploadId }),
+      new AbortMultipartUploadCommand({
+        Bucket: this.bucket,
+        Key: key,
+        UploadId: uploadId,
+      }),
     );
   }
 
@@ -141,7 +149,8 @@ export class StorageService {
         }),
       );
       for (const p of res.Parts ?? []) {
-        if (p.PartNumber && p.ETag) parts.push({ PartNumber: p.PartNumber, ETag: p.ETag });
+        if (p.PartNumber && p.ETag)
+          parts.push({ PartNumber: p.PartNumber, ETag: p.ETag });
       }
       marker = res.IsTruncated ? res.NextPartNumberMarker : undefined;
     } while (marker);
@@ -150,14 +159,25 @@ export class StorageService {
 
   // --- Đọc / ghi object thường ---
 
-  async putObject(key: string, body: Buffer | Uint8Array | string, contentType?: string): Promise<void> {
+  async putObject(
+    key: string,
+    body: Buffer | Uint8Array | string,
+    contentType?: string,
+  ): Promise<void> {
     await this.client.send(
-      new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: body, ContentType: contentType }),
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: body,
+        ContentType: contentType,
+      }),
     );
   }
 
   async getObjectStream(key: string): Promise<Readable> {
-    const res = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }));
+    const res = await this.client.send(
+      new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+    );
     return res.Body as Readable;
   }
 
@@ -165,7 +185,9 @@ export class StorageService {
     const stream = await this.getObjectStream(key);
     const chunks: Buffer[] = [];
     for await (const chunk of stream) {
-      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as Uint8Array));
+      chunks.push(
+        Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as Uint8Array),
+      );
     }
     return Buffer.concat(chunks);
   }
@@ -196,7 +218,9 @@ export class StorageService {
         : undefined,
       ResponseContentType: opts.responseContentType,
     });
-    return getSignedUrl(this.client, command, { expiresIn: opts.expiresIn ?? 600 });
+    return getSignedUrl(this.client, command, {
+      expiresIn: opts.expiresIn ?? 600,
+    });
   }
 
   /** Fallback: cho trình duyệt PUT thẳng 1 part (mục 5.A — hiện không dùng). */

@@ -23,7 +23,10 @@ export class PublicShareController {
 
   /** Metadata dựng trang. Nếu có mật khẩu mà chưa mở khoá → chỉ trả requiresPassword. */
   @Get(':token')
-  async meta(@Param('token') token: string, @Headers('x-share-session') session?: string) {
+  async meta(
+    @Param('token') token: string,
+    @Headers('x-share-session') session?: string,
+  ) {
     const share = await this.share.resolvePublicShare(token);
     const kind = share.file ? 'file' : 'folder';
     if (!this.share.isUnlocked(share, session)) {

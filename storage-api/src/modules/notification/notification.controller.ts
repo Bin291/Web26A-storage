@@ -7,7 +7,10 @@ export class NotificationController {
   constructor(private readonly notifications: NotificationService) {}
 
   @Get()
-  async list(@CurrentUser('id') userId: string, @Query('unread') unread?: string) {
+  async list(
+    @CurrentUser('id') userId: string,
+    @Query('unread') unread?: string,
+  ) {
     const items = await this.notifications.list(userId, unread === 'true');
     const unreadCount = await this.notifications.countUnread(userId);
     return { items, unreadCount };

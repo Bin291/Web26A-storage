@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Notification } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -22,7 +26,10 @@ export class NotificationService {
     const n = await this.prisma.notification.findUnique({ where: { id } });
     if (!n) throw new NotFoundException('Thông báo không tồn tại');
     if (n.userId !== userId) throw new ForbiddenException('Không có quyền');
-    return this.prisma.notification.update({ where: { id }, data: { readAt: new Date() } });
+    return this.prisma.notification.update({
+      where: { id },
+      data: { readAt: new Date() },
+    });
   }
 
   async markAllRead(userId: string): Promise<void> {

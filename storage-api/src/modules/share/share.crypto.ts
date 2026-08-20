@@ -30,7 +30,11 @@ export function verifySharePassword(password: string, stored: string): boolean {
  * Token phiên khi mở khoá mật khẩu (mục 12.E). HMAC-SHA256 tự ký, không state
  * server, không thêm dependency jsonwebtoken. Định dạng: base64url(payload).sig
  */
-export function signShareSession(token: string, secret: string, ttlSeconds = 1800): string {
+export function signShareSession(
+  token: string,
+  secret: string,
+  ttlSeconds = 1800,
+): string {
   const payload = { t: token, exp: Math.floor(Date.now() / 1000) + ttlSeconds };
   const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
   const sig = createHmac('sha256', secret).update(body).digest('base64url');
@@ -45,7 +49,9 @@ export function verifyShareSession(
   if (!sessionToken) return false;
   const [body, sig] = sessionToken.split('.');
   if (!body || !sig) return false;
-  const expected = createHmac('sha256', secret).update(body).digest('base64url');
+  const expected = createHmac('sha256', secret)
+    .update(body)
+    .digest('base64url');
   const a = Buffer.from(sig);
   const b = Buffer.from(expected);
   if (a.length !== b.length || !timingSafeEqual(a, b)) return false;

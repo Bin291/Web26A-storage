@@ -10,7 +10,11 @@ export class AppController {
   @Public()
   @Get('health')
   health() {
-    return { status: 'ok', service: 'storage-api', time: new Date().toISOString() };
+    return {
+      status: 'ok',
+      service: 'storage-api',
+      time: new Date().toISOString(),
+    };
   }
 
   @Public()

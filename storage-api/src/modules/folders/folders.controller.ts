@@ -9,7 +9,12 @@ import {
   Query,
 } from '@nestjs/common';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { CreateFolderDto, MoveFolderDto, RenameFolderDto, StarDto } from './dto/folder.dto';
+import {
+  CreateFolderDto,
+  MoveFolderDto,
+  RenameFolderDto,
+  StarDto,
+} from './dto/folder.dto';
 import { FoldersService } from './folders.service';
 
 @Controller('folders')
@@ -18,7 +23,10 @@ export class FoldersController {
 
   /** GET /folders?parentId=... — con trực tiếp (lazy load cây, mục 11.C). */
   @Get()
-  list(@CurrentUser('id') userId: string, @Query('parentId') parentId?: string) {
+  list(
+    @CurrentUser('id') userId: string,
+    @Query('parentId') parentId?: string,
+  ) {
     return this.folders.listChildren(userId, parentId ?? null);
   }
 
@@ -42,12 +50,20 @@ export class FoldersController {
   }
 
   @Post(':id/move')
-  move(@CurrentUser('id') userId: string, @Param('id') id: string, @Body() dto: MoveFolderDto) {
+  move(
+    @CurrentUser('id') userId: string,
+    @Param('id') id: string,
+    @Body() dto: MoveFolderDto,
+  ) {
     return this.folders.move(userId, id, dto.targetParentId ?? null);
   }
 
   @Patch(':id/star')
-  star(@CurrentUser('id') userId: string, @Param('id') id: string, @Body() dto: StarDto) {
+  star(
+    @CurrentUser('id') userId: string,
+    @Param('id') id: string,
+    @Body() dto: StarDto,
+  ) {
     return this.folders.setStar(userId, id, dto.isStarred);
   }
 

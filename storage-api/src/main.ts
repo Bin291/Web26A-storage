@@ -7,12 +7,17 @@ import { AppModule } from './app.module';
 
 async function bootstrap() {
   // bodyParser: false để tự đăng ký — route /uploads/part cần raw octet-stream (mục 5.A).
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bodyParser: false,
+  });
   const config = app.get(ConfigService);
 
   const chunkSizeMb = config.get<number>('limits.chunkSizeMb') ?? 8;
   // Cho phép chunk + overhead; gấp đôi chunk size để dư.
-  app.use('/uploads/part', raw({ type: () => true, limit: `${chunkSizeMb * 2}mb` }));
+  app.use(
+    '/uploads/part',
+    raw({ type: () => true, limit: `${chunkSizeMb * 2}mb` }),
+  );
   app.use(json({ limit: '5mb' }));
   app.use(urlencoded({ extended: true, limit: '5mb' }));
 
@@ -32,7 +37,7 @@ async function bootstrap() {
 
   const port = config.get<number>('port') ?? 3000;
   await app.listen(port);
-  // eslint-disable-next-line no-console
+
   console.log(`storage-api đang chạy ở http://localhost:${port}`);
 }
 void bootstrap();

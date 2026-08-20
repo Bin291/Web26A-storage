@@ -42,7 +42,13 @@ export class TrashService {
     const [delFolders, delFiles] = await Promise.all([
       this.prisma.folder.findMany({
         where: { userId, deletedAt: { not: null } },
-        select: { id: true, name: true, parentId: true, isStarred: true, deletedAt: true },
+        select: {
+          id: true,
+          name: true,
+          parentId: true,
+          isStarred: true,
+          deletedAt: true,
+        },
       }),
       this.prisma.file.findMany({
         where: { userId, deletedAt: { not: null } },
@@ -72,7 +78,9 @@ export class TrashService {
         isStarred: f.isStarred,
         deletedAt: f.deletedAt!.toISOString(),
         daysUntilPurge: this.daysUntilPurge(f.deletedAt!),
-        folderPath: f.parentId ? await this.folders.breadcrumb(userId, f.parentId) : [],
+        folderPath: f.parentId
+          ? await this.folders.breadcrumb(userId, f.parentId)
+          : [],
       });
     }
 
@@ -87,7 +95,9 @@ export class TrashService {
         isStarred: f.isStarred,
         deletedAt: f.deletedAt!.toISOString(),
         daysUntilPurge: this.daysUntilPurge(f.deletedAt!),
-        folderPath: f.folderId ? await this.folders.breadcrumb(userId, f.folderId) : [],
+        folderPath: f.folderId
+          ? await this.folders.breadcrumb(userId, f.folderId)
+          : [],
       });
     }
 
@@ -101,10 +111,13 @@ export class TrashService {
     const roots = await this.listTrashRoots(userId);
     for (const item of roots) {
       try {
-        if (item.kind === 'folder') await this.folders.permanentDelete(userId, item.id);
+        if (item.kind === 'folder')
+          await this.folders.permanentDelete(userId, item.id);
         else await this.files.permanentDelete(userId, item.id);
       } catch (err) {
-        this.logger.warn(`Empty trash bỏ qua ${item.id}: ${(err as Error).message}`);
+        this.logger.warn(
+          `Empty trash bỏ qua ${item.id}: ${(err as Error).message}`,
+        );
       }
     }
   }

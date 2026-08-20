@@ -18,7 +18,9 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(config: ConfigService) {
     const secret = config.get<string>('supabase.jwtSecret');
     if (!secret) {
-      throw new Error('SUPABASE_JWT_SECRET chưa cấu hình — không thể verify JWT');
+      throw new Error(
+        'SUPABASE_JWT_SECRET chưa cấu hình — không thể verify JWT',
+      );
     }
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),

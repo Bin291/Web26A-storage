@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 
 /**
@@ -6,7 +11,10 @@ import { PrismaClient } from '@prisma/client';
  * mọi query tự lọc `WHERE userId` tường minh (mục 3).
  */
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+export class PrismaService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
   private readonly logger = new Logger(PrismaService.name);
 
   async onModuleInit(): Promise<void> {
@@ -15,7 +23,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       this.logger.log('Prisma đã kết nối Postgres');
     } catch (err) {
       // Không chặn khởi động khi DB chưa sẵn sàng (dev) — log để biết.
-      this.logger.error('Không kết nối được Postgres — kiểm tra DATABASE_URL', err as Error);
+      this.logger.error(
+        'Không kết nối được Postgres — kiểm tra DATABASE_URL',
+        err as Error,
+      );
     }
   }
 

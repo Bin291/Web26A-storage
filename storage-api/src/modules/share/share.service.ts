@@ -38,8 +38,10 @@ export class ShareService {
     private readonly folders: FoldersService,
     config: ConfigService,
   ) {
-    this.baseUrl = config.get<string>('share.baseUrl') ?? 'http://localhost:4200';
-    this.sessionSecret = config.get<string>('share.sessionSecret') ?? 'dev-secret';
+    this.baseUrl =
+      config.get<string>('share.baseUrl') ?? 'http://localhost:4200';
+    this.sessionSecret =
+      config.get<string>('share.sessionSecret') ?? 'dev-secret';
     this.contentTtl = config.get<number>('share.contentTtlSeconds') ?? 600;
   }
 
@@ -51,7 +53,11 @@ export class ShareService {
     }
   }
 
-  private async assertOwnedTarget(userId: string, fileId?: string, folderId?: string): Promise<void> {
+  private async assertOwnedTarget(
+    userId: string,
+    fileId?: string,
+    folderId?: string,
+  ): Promise<void> {
     if (fileId) await this.files.assertOwned(fileId, userId);
     else if (folderId) await this.folders.assertOwned(folderId, userId);
   }
@@ -61,7 +67,10 @@ export class ShareService {
     return new Date(Date.now() + days * 24 * 60 * 60 * 1000);
   }
 
-  async createLink(userId: string, dto: CreateLinkDto): Promise<Share & { url: string }> {
+  async createLink(
+    userId: string,
+    dto: CreateLinkDto,
+  ): Promise<Share & { url: string }> {
     this.assertExactlyOneTarget(dto.fileId, dto.folderId);
     await this.assertOwnedTarget(userId, dto.fileId, dto.folderId);
     const share = await this.prisma.share.create({
@@ -143,7 +152,11 @@ export class ShareService {
     return share;
   }
 
-  async listForTarget(userId: string, fileId?: string, folderId?: string): Promise<Share[]> {
+  async listForTarget(
+    userId: string,
+    fileId?: string,
+    folderId?: string,
+  ): Promise<Share[]> {
     this.assertExactlyOneTarget(fileId, folderId);
     await this.assertOwnedTarget(userId, fileId, folderId);
     return this.prisma.share.findMany({
@@ -152,13 +165,21 @@ export class ShareService {
     });
   }
 
-  async update(userId: string, shareId: string, dto: UpdateShareDto): Promise<Share> {
+  async update(
+    userId: string,
+    shareId: string,
+    dto: UpdateShareDto,
+  ): Promise<Share> {
     const share = await this.assertOwnShare(userId, shareId);
     const data: Record<string, unknown> = {};
-    if (dto.allowDownload !== undefined) data['allowDownload'] = dto.allowDownload;
-    if (dto.expiresInDays !== undefined) data['expiresAt'] = this.expiresAtFrom(dto.expiresInDays);
+    if (dto.allowDownload !== undefined)
+      data['allowDownload'] = dto.allowDownload;
+    if (dto.expiresInDays !== undefined)
+      data['expiresAt'] = this.expiresAtFrom(dto.expiresInDays);
     if (dto.password !== undefined) {
-      data['passwordHash'] = dto.password ? hashSharePassword(dto.password) : null;
+      data['passwordHash'] = dto.password
+        ? hashSharePassword(dto.password)
+        : null;
     }
     return this.prisma.share.update({ where: { id: share.id }, data });
   }
@@ -168,10 +189,16 @@ export class ShareService {
     await this.prisma.share.delete({ where: { id: shareId } });
   }
 
-  private async assertOwnShare(userId: string, shareId: string): Promise<Share> {
-    const share = await this.prisma.share.findUnique({ where: { id: shareId } });
+  private async assertOwnShare(
+    userId: string,
+    shareId: string,
+  ): Promise<Share> {
+    const share = await this.prisma.share.findUnique({
+      where: { id: shareId },
+    });
     if (!share) throw new NotFoundException('Chia sẻ không tồn tại');
-    if (share.userId !== userId) throw new ForbiddenException('Không có quyền với chia sẻ này');
+    if (share.userId !== userId)
+      throw new ForbiddenException('Không có quyền với chia sẻ này');
     return share;
   }
 
@@ -199,7 +226,9 @@ export class ShareService {
     while (current) {
       if (guard.has(current)) break;
       guard.add(current);
-      const folder: Folder | null = await this.prisma.folder.findUnique({ where: { id: current } });
+      const folder: Folder | null = await this.prisma.folder.findUnique({
+        where: { id: current },
+      });
       if (!folder) break;
       ids.push(folder.id);
       current = folder.parentId;
@@ -302,7 +331,10 @@ export class ShareService {
     return { url };
   }
 
-  private async assertDownloadAllowed(userId: string, file: File): Promise<void> {
+  private async assertDownloadAllowed(
+    userId: string,
+    file: File,
+  ): Promise<void> {
     if (file.userId === userId) return;
     const now = new Date();
     const ancestorIds = await this.ancestorFolderIds(file.folderId);
@@ -313,13 +345,16 @@ export class ShareService {
         AND: [{ OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] }],
       },
     });
-    if (!share?.allowDownload) throw new ForbiddenException('Chia sẻ này không cho phép tải xuống');
+    if (!share?.allowDownload)
+      throw new ForbiddenException('Chia sẻ này không cho phép tải xuống');
   }
 
   // ===================== Kênh B: link công khai =====================
 
   /** Phân giải token: tồn tại → chưa hết hạn → target chưa trash → (file) ready. */
-  async resolvePublicShare(token: string): Promise<Share & { file: File | null; folder: Folder | null }> {
+  async resolvePublicShare(
+    token: string,
+  ): Promise<Share & { file: File | null; folder: Folder | null }> {
     const share = await this.prisma.share.findUnique({
       where: { token },
       include: { file: true, folder: true },
@@ -333,7 +368,8 @@ export class ShareService {
         throw new NotFoundException('Nội dung không còn khả dụng');
       }
     } else if (share.folder) {
-      if (share.folder.deletedAt) throw new NotFoundException('Nội dung không còn khả dụng');
+      if (share.folder.deletedAt)
+        throw new NotFoundException('Nội dung không còn khả dụng');
     } else {
       throw new NotFoundException('Link không hợp lệ');
     }
@@ -346,7 +382,10 @@ export class ShareService {
   }
 
   unlock(share: Share, password: string): string {
-    if (!share.passwordHash || !verifySharePassword(password, share.passwordHash)) {
+    if (
+      !share.passwordHash ||
+      !verifySharePassword(password, share.passwordHash)
+    ) {
       throw new UnauthorizedException('Mật khẩu không đúng');
     }
     return signShareSession(share.token!, this.sessionSecret);
@@ -388,7 +427,8 @@ export class ShareService {
     share: Share & { folder: Folder | null },
     folderId?: string,
   ): Promise<{ folders: Folder[]; files: unknown[] }> {
-    if (!share.folder) throw new BadRequestException('Link này không phải thư mục');
+    if (!share.folder)
+      throw new BadRequestException('Link này không phải thư mục');
     const targetFolderId = folderId ?? share.folder.id;
     if (targetFolderId !== share.folder.id) {
       await this.assertDescendantFolder(share.folder.id, targetFolderId);
@@ -415,7 +455,9 @@ export class ShareService {
   ): Promise<File> {
     if (share.file && !childFileId) return share.file;
     if (share.folder && childFileId) {
-      const file = await this.prisma.file.findUnique({ where: { id: childFileId } });
+      const file = await this.prisma.file.findUnique({
+        where: { id: childFileId },
+      });
       if (!file || file.deletedAt || file.status !== 'ready') {
         throw new NotFoundException('Tệp không tồn tại');
       }
@@ -426,7 +468,10 @@ export class ShareService {
   }
 
   /** Verify folder con nằm trong cây của rootFolderId (mục 12.D). */
-  private async assertDescendantFolder(rootFolderId: string, folderId: string): Promise<void> {
+  private async assertDescendantFolder(
+    rootFolderId: string,
+    folderId: string,
+  ): Promise<void> {
     const ancestors = await this.ancestorFolderIds(folderId);
     if (!ancestors.includes(rootFolderId)) {
       throw new NotFoundException('Không tìm thấy');
@@ -434,7 +479,10 @@ export class ShareService {
   }
 
   /** Verify file con nằm trong cây của rootFolderId. */
-  private async assertDescendantFile(rootFolderId: string, file: File): Promise<void> {
+  private async assertDescendantFile(
+    rootFolderId: string,
+    file: File,
+  ): Promise<void> {
     if (!file.folderId) throw new NotFoundException('Không tìm thấy');
     const ancestors = await this.ancestorFolderIds(file.folderId);
     if (!ancestors.includes(rootFolderId)) {

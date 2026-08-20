@@ -53,14 +53,22 @@ export default () => ({
   },
 
   share: {
-    contentTtlSeconds: parseInt(process.env.SHARE_CONTENT_TTL_SECONDS ?? '600', 10),
-    baseUrl: process.env.SHARE_BASE_URL ?? process.env.WEB_ORIGIN ?? 'http://localhost:4200',
-    sessionSecret: process.env.SHARE_SESSION_SECRET ?? 'dev-share-session-secret',
+    contentTtlSeconds: parseInt(
+      process.env.SHARE_CONTENT_TTL_SECONDS ?? '600',
+      10,
+    ),
+    baseUrl:
+      process.env.SHARE_BASE_URL ??
+      process.env.WEB_ORIGIN ??
+      'http://localhost:4200',
+    sessionSecret:
+      process.env.SHARE_SESSION_SECRET ?? 'dev-share-session-secret',
   },
 
   ai: {
     geminiApiKey: process.env.GEMINI_API_KEY,
-    geminiEmbeddingModel: process.env.GEMINI_EMBEDDING_MODEL ?? 'gemini-embedding-001',
+    geminiEmbeddingModel:
+      process.env.GEMINI_EMBEDDING_MODEL ?? 'gemini-embedding-001',
     geminiOcrModel: process.env.GEMINI_OCR_MODEL ?? 'gemini-3.5-flash',
     bazaarlinkApiKey: process.env.BAZAARLINK_API_KEY || undefined,
     bazaarlinkBaseUrl: process.env.BAZAARLINK_BASE_URL || undefined,
