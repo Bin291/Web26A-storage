@@ -27,10 +27,10 @@ install-fe:
 install-be:
 	cd $(BE_DIR) && npm install
 
-fe:
+fe: install-fe
 	cd $(FE_DIR) && npm start
 
-be:
+be: install-be
 	cd $(BE_DIR) && npm run start:dev
 
 dev:
