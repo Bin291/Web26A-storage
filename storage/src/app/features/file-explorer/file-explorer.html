@@ -1,5 +1,5 @@
 <div
-  [class.dropzone-over]="dragOver()"
+  class="explorer-root"
   (dragover)="onDragOver($event)"
   (dragleave)="onDragLeave()"
   (drop)="onDrop($event)"
@@ -8,9 +8,11 @@
   <div class="toolbar">
     @if (isFolderLens()) {
       <nav class="breadcrumb" aria-label="breadcrumb">
-        <a class="crumb" (click)="goCrumb(null)">{{ 'common.root' | t }}</a>
+        <a class="crumb" [class.current]="breadcrumb().length === 0" (click)="goCrumb(null)">{{
+          'common.root' | t
+        }}</a>
         @for (crumb of breadcrumb(); track crumb.id; let last = $last) {
-          <span class="mi" style="font-size: 16px">chevron_right</span>
+          <span class="mi" style="font-size: 22px">chevron_right</span>
           <a class="crumb" [class.current]="last" (click)="goCrumb(crumb)">{{ crumb.name }}</a>
         }
       </nav>
@@ -53,11 +55,14 @@
   @if (loading()) {
     <div class="empty">{{ 'files.loading' | t }}</div>
   } @else if (folders().length === 0 && files().length === 0) {
-    <div class="empty">
-      <div style="font-size: 40px"><span class="mi" style="font-size: 40px">folder_open</span></div>
+    <label class="empty" [class.drag-active]="dragOver()">
+      <div style="font-size: 40px">
+        <span class="mi" style="font-size: 40px">{{ dragOver() ? 'upload' : 'folder_open' }}</span>
+      </div>
       <p>{{ 'files.empty' | t }}</p>
       <p style="font-size: 13px">{{ 'files.emptyHint' | t }}</p>
-    </div>
+      <input type="file" multiple hidden (change)="onPick($event)" />
+    </label>
   } @else if (settings.viewMode() === 'grid') {
     <div class="file-grid">
       @for (folder of folders(); track folder.id) {

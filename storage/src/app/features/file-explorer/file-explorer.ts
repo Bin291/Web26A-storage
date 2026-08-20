@@ -39,6 +39,7 @@ interface ContextMenu {
   selector: 'app-file-explorer',
   imports: [TranslatePipe, DatePipe, ShareDialog],
   templateUrl: './file-explorer.html',
+  host: { class: 'explorer-host' },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FileExplorer {
