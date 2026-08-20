@@ -59,6 +59,13 @@ export class SupabaseService {
     return this.client.auth.signUp({ email, password });
   }
 
+  signInWithGoogle(redirectTo: string) {
+    return this.client.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo },
+    });
+  }
+
   signOut() {
     return this.client.auth.signOut();
   }

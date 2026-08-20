@@ -156,6 +156,45 @@ body {
   color: var(--ink-subtle);
   cursor: default;
 }
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+  color: var(--ink-subtle);
+  font-size: 12px;
+  letter-spacing: 0.16px;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--hairline);
+}
+.auth-btn-google {
+  margin-top: 16px;
+  padding: 11px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font-weight: 400;
+  font-size: 14px;
+  letter-spacing: 0.16px;
+  cursor: pointer;
+}
+.auth-btn-google:hover {
+  background: var(--surface-1);
+}
+.auth-btn-google:disabled {
+  color: var(--ink-subtle);
+  cursor: default;
+}
 .auth-foot {
   margin-top: 20px;
   font-size: 14px;

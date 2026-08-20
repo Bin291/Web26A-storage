@@ -1,19 +1,17 @@
 import { Routes } from '@angular/router';
-// LOGIN FEATURE TẠM TẮT — bật lại: mở comment 2 route login/register + guard bên dưới.
-// import { authGuard, guestGuard } from './core/guards/auth.guard';
+import { authGuard, guestGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
-  // --- LOGIN FEATURE (đang comment) ---
-  // {
-  //   path: 'login',
-  //   canActivate: [guestGuard],
-  //   loadComponent: () => import('./features/auth/login/login').then((m) => m.Login),
-  // },
-  // {
-  //   path: 'register',
-  //   canActivate: [guestGuard],
-  //   loadComponent: () => import('./features/auth/register/register').then((m) => m.Register),
-  // },
+  {
+    path: 'login',
+    canActivate: [guestGuard],
+    loadComponent: () => import('./features/auth/login/login').then((m) => m.Login),
+  },
+  {
+    path: 'register',
+    canActivate: [guestGuard],
+    loadComponent: () => import('./features/auth/register/register').then((m) => m.Register),
+  },
   // Trang công khai — ngoài authGuard (mục 12.F)
   {
     path: 's/:token',
@@ -22,7 +20,7 @@ export const routes: Routes = [
   },
   {
     path: '',
-    // canActivate: [authGuard], // LOGIN FEATURE tắt — vào thẳng không cần đăng nhập
+    canActivate: [authGuard],
     loadComponent: () => import('./layout/main-layout/main-layout').then((m) => m.MainLayout),
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'files' },

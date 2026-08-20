@@ -33,4 +33,17 @@ export class Login {
       this.loading.set(false);
     }
   }
+
+  async loginWithGoogle(): Promise<void> {
+    if (this.loading()) return;
+    this.error.set(null);
+    this.loading.set(true);
+    try {
+      const redirect = new URLSearchParams(location.search).get('redirect') || '/files';
+      await this.auth.signInWithGoogle(redirect);
+    } catch (err) {
+      this.error.set(err instanceof Error ? err.message : 'auth.loginFailed');
+      this.loading.set(false);
+    }
+  }
 }

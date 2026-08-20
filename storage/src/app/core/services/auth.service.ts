@@ -70,6 +70,13 @@ export class AuthService {
     return { needsConfirmation: data.session === null };
   }
 
+  /** Điều hướng sang Google OAuth; session được set khi trình duyệt quay lại app (detectSessionInUrl). */
+  async signInWithGoogle(redirectPath = '/files'): Promise<void> {
+    const redirectTo = `${window.location.origin}${redirectPath}`;
+    const { error } = await this.supabase.signInWithGoogle(redirectTo);
+    if (error) throw error;
+  }
+
   async signOut(): Promise<void> {
     await this.supabase.signOut();
     this._session.set(null);
