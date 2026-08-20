@@ -1,8 +1,10 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { SettingsService, ThemeMode, Density } from '../../core/services/settings.service';
 import { LangService } from '../../core/i18n/lang.service';
 import { Lang } from '../../core/i18n/dictionaries';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-settings',
@@ -57,6 +59,13 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe';
         }
       </div>
     </section>
+
+    <section class="settings-block">
+      <h2 class="settings-label">{{ 'settings.account' | t }}</h2>
+      <button class="signout-btn" type="button" (click)="signOut()">
+        {{ 'nav.logout' | t }}
+      </button>
+    </section>
   `,
   styles: [
     `
@@ -92,6 +101,21 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe';
         background: var(--primary);
         color: var(--on-primary);
       }
+      .signout-btn {
+        padding: 10px 20px;
+        background: var(--surface);
+        color: var(--danger, #d92626);
+        border: 1px solid var(--border);
+        border-radius: 0;
+        cursor: pointer;
+        font-size: 14px;
+        letter-spacing: 0.16px;
+        font-family: inherit;
+      }
+      .signout-btn:hover {
+        background: var(--danger, #d92626);
+        color: #fff;
+      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -99,6 +123,13 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe';
 export class Settings {
   protected readonly settings = inject(SettingsService);
   protected readonly lang = inject(LangService);
+  private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+
+  protected async signOut(): Promise<void> {
+    await this.auth.signOut();
+    await this.router.navigateByUrl('/login');
+  }
 
   protected readonly themeOptions: { value: ThemeMode; labelKey: string }[] = [
     { value: 'light', labelKey: 'theme.light' },
