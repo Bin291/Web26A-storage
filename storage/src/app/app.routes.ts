@@ -1,16 +1,85 @@
 import { Routes } from '@angular/router';
+// LOGIN FEATURE TẠM TẮT — bật lại: mở comment 2 route login/register + guard bên dưới.
+// import { authGuard, guestGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
+  // --- LOGIN FEATURE (đang comment) ---
+  // {
+  //   path: 'login',
+  //   canActivate: [guestGuard],
+  //   loadComponent: () => import('./features/auth/login/login').then((m) => m.Login),
+  // },
+  // {
+  //   path: 'register',
+  //   canActivate: [guestGuard],
+  //   loadComponent: () => import('./features/auth/register/register').then((m) => m.Register),
+  // },
+  // Trang công khai — ngoài authGuard (mục 12.F)
+  {
+    path: 's/:token',
+    loadComponent: () =>
+      import('./features/public-share/public-share').then((m) => m.PublicShare),
+  },
   {
     path: '',
-    loadComponent: () =>
-      import('./layout/main-layout/main-layout').then((m) => m.MainLayout),
+    // canActivate: [authGuard], // LOGIN FEATURE tắt — vào thẳng không cần đăng nhập
+    loadComponent: () => import('./layout/main-layout/main-layout').then((m) => m.MainLayout),
     children: [
+      { path: '', pathMatch: 'full', redirectTo: 'files' },
+      // Lăng kính Thư mục (mục 11.H) — trang chủ "My Storage" (mục 11.P)
       {
-        path: '',
+        path: 'files',
         loadComponent: () =>
-          import('./features/dashboard/dashboard').then((m) => m.Dashboard),
+          import('./features/file-explorer/file-explorer').then((m) => m.FileExplorer),
+        data: { mode: 'folder' },
+      },
+      {
+        path: 'files/folder/:folderId',
+        loadComponent: () =>
+          import('./features/file-explorer/file-explorer').then((m) => m.FileExplorer),
+        data: { mode: 'folder' },
+      },
+      // Lăng kính Loại (mục 11.H)
+      {
+        path: 'type/:category',
+        loadComponent: () =>
+          import('./features/file-explorer/file-explorer').then((m) => m.FileExplorer),
+        data: { mode: 'type' },
+      },
+      {
+        path: 'starred',
+        loadComponent: () =>
+          import('./features/file-explorer/file-explorer').then((m) => m.FileExplorer),
+        data: { mode: 'starred' },
+      },
+      {
+        path: 'recent',
+        loadComponent: () =>
+          import('./features/file-explorer/file-explorer').then((m) => m.FileExplorer),
+        data: { mode: 'recent' },
+      },
+      // Tìm kiếm AI (mục 11.P — lối tắt sidebar)
+      {
+        path: 'search',
+        loadComponent: () => import('./features/search/search').then((m) => m.Search),
+      },
+      {
+        path: 'shared',
+        loadComponent: () => import('./features/shared/shared-page').then((m) => m.SharedPage),
+      },
+      {
+        path: 'trash',
+        loadComponent: () => import('./features/trash/trash').then((m) => m.Trash),
+      },
+      {
+        path: 'settings',
+        loadComponent: () => import('./features/settings/settings').then((m) => m.Settings),
+      },
+      {
+        path: 'profile',
+        loadComponent: () => import('./features/profile/profile').then((m) => m.Profile),
       },
     ],
   },
+  { path: '**', redirectTo: '' },
 ];

@@ -1,0 +1,212 @@
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { Folder } from '@prisma/client';
+import { PrismaService } from '../../prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
+import { resolveNameCollision } from '../../common/utils/name-collision';
+
+export interface BreadcrumbCrumb {
+  id: string;
+  name: string;
+}
+
+@Injectable()
+export class FoldersService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storage: StorageService,
+  ) {}
+
+  /** Đảm bảo folder tồn tại + thuộc sở hữu user (mục 3, 12.A). */
+  async assertOwned(folderId: string, userId: string): Promise<Folder> {
+    const folder = await this.prisma.folder.findUnique({ where: { id: folderId } });
+    if (!folder || folder.deletedAt) throw new NotFoundException('Thư mục không tồn tại');
+    if (folder.userId !== userId) throw new ForbiddenException('Không có quyền với thư mục này');
+    return folder;
+  }
+
+  /** Liệt kê thư mục con trực tiếp (lazy load cây sidebar — mục 11.C). */
+  async listChildren(userId: string, parentId: string | null): Promise<Folder[]> {
+    if (parentId) await this.assertOwned(parentId, userId);
+    return this.prisma.folder.findMany({
+      where: { userId, parentId: parentId ?? null, deletedAt: null },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  async create(userId: string, name: string, parentId: string | null): Promise<Folder> {
+    if (parentId) await this.assertOwned(parentId, userId);
+    const siblings = await this.prisma.folder.findMany({
+      where: { userId, parentId: parentId ?? null, deletedAt: null },
+      select: { name: true },
+    });
+    const finalName = resolveNameCollision(name, siblings.map((s) => s.name), true);
+    return this.prisma.folder.create({
+      data: { name: finalName, parentId: parentId ?? null, userId },
+    });
+  }
+
+  async rename(userId: string, folderId: string, name: string): Promise<Folder> {
+    const folder = await this.assertOwned(folderId, userId);
+    const siblings = await this.prisma.folder.findMany({
+      where: {
+        userId,
+        parentId: folder.parentId,
+        deletedAt: null,
+        NOT: { id: folderId },
+      },
+      select: { name: true },
+    });
+    const finalName = resolveNameCollision(name, siblings.map((s) => s.name), true);
+    return this.prisma.folder.update({ where: { id: folderId }, data: { name: finalName } });
+  }
+
+  async move(userId: string, folderId: string, targetParentId: string | null): Promise<Folder> {
+    const folder = await this.assertOwned(folderId, userId);
+    if (targetParentId) {
+      await this.assertOwned(targetParentId, userId);
+      if (targetParentId === folderId) {
+        throw new BadRequestException('Không thể chuyển thư mục vào chính nó');
+      }
+      // Chặn chuyển vào hậu duệ của chính nó (tạo vòng lặp).
+      const descendantIds = await this.collectDescendantFolderIds(folderId);
+      if (descendantIds.has(targetParentId)) {
+        throw new BadRequestException('Không thể chuyển thư mục vào thư mục con của nó');
+      }
+    }
+    const siblings = await this.prisma.folder.findMany({
+      where: {
+        userId,
+        parentId: targetParentId ?? null,
+        deletedAt: null,
+        NOT: { id: folderId },
+      },
+      select: { name: true },
+    });
+    const finalName = resolveNameCollision(folder.name, siblings.map((s) => s.name), true);
+    return this.prisma.folder.update({
+      where: { id: folderId },
+      data: { parentId: targetParentId ?? null, name: finalName },
+    });
+  }
+
+  async setStar(userId: string, folderId: string, isStarred: boolean): Promise<Folder> {
+    await this.assertOwned(folderId, userId);
+    return this.prisma.folder.update({ where: { id: folderId }, data: { isStarred } });
+  }
+
+  /**
+   * Xoá mềm (vào Thùng rác — mục 7.E giai đoạn 1): set deletedAt cho folder +
+   * đệ quy toàn bộ file/folder con cùng thời điểm. Dữ liệu R2 chưa động tới.
+   */
+  async moveToTrash(userId: string, folderId: string): Promise<void> {
+    await this.assertOwned(folderId, userId);
+    const now = new Date();
+    const folderIds = [folderId, ...(await this.collectDescendantFolderIds(folderId))];
+    await this.prisma.$transaction([
+      this.prisma.file.updateMany({
+        where: { folderId: { in: folderIds }, deletedAt: null },
+        data: { deletedAt: now },
+      }),
+      this.prisma.folder.updateMany({
+        where: { id: { in: folderIds }, deletedAt: null },
+        data: { deletedAt: now },
+      }),
+    ]);
+  }
+
+  /**
+   * Khôi phục folder từ Thùng rác (mục 7.E, 11.K): clear deletedAt cho cả cây con,
+   * giải trùng tên tại vị trí gốc (chỉ so với item đang active).
+   */
+  async restore(userId: string, folderId: string): Promise<Folder> {
+    const folder = await this.prisma.folder.findUnique({ where: { id: folderId } });
+    if (!folder) throw new NotFoundException('Thư mục không tồn tại');
+    if (folder.userId !== userId) throw new ForbiddenException('Không có quyền với thư mục này');
+    if (!folder.deletedAt) throw new BadRequestException('Thư mục không nằm trong Thùng rác');
+
+    const siblings = await this.prisma.folder.findMany({
+      where: { userId, parentId: folder.parentId, deletedAt: null, NOT: { id: folderId } },
+      select: { name: true },
+    });
+    const finalName = resolveNameCollision(folder.name, siblings.map((s) => s.name), true);
+    const folderIds = [folderId, ...(await this.collectDescendantFolderIds(folderId))];
+    await this.prisma.$transaction([
+      this.prisma.file.updateMany({
+        where: { folderId: { in: folderIds }, deletedAt: { not: null } },
+        data: { deletedAt: null },
+      }),
+      this.prisma.folder.updateMany({
+        where: { id: { in: folderIds }, deletedAt: { not: null } },
+        data: { deletedAt: null },
+      }),
+    ]);
+    return this.prisma.folder.update({ where: { id: folderId }, data: { name: finalName } });
+  }
+
+  /**
+   * Xoá vĩnh viễn 1 folder (mục 7.E giai đoạn 2): gom toàn bộ object key của mọi
+   * file con TRƯỚC, xoá trên R2, rồi hard-delete folder gốc (Prisma cascade con).
+   */
+  async permanentDelete(userId: string, folderId: string): Promise<void> {
+    const folder = await this.prisma.folder.findUnique({ where: { id: folderId } });
+    if (!folder) throw new NotFoundException('Thư mục không tồn tại');
+    if (folder.userId !== userId) throw new ForbiddenException('Không có quyền với thư mục này');
+    if (!folder.deletedAt) throw new BadRequestException('Chỉ xoá vĩnh viễn item đang ở Thùng rác');
+
+    const folderIds = [folderId, ...(await this.collectDescendantFolderIds(folderId))];
+    const files = await this.prisma.file.findMany({
+      where: { folderId: { in: folderIds } },
+      select: { id: true, r2Key: true, userId: true },
+    });
+    const keys: string[] = [];
+    for (const f of files) {
+      keys.push(f.r2Key);
+      keys.push(this.storage.thumbnailKey(f.userId, f.id));
+      keys.push(this.storage.artifactKey(f.userId, f.id));
+    }
+    await this.storage.deleteObjects(keys);
+    // Xoá folder gốc — cascade tự xoá folder/file/chunk con.
+    await this.prisma.folder.delete({ where: { id: folderId } });
+  }
+
+  /** Breadcrumb đầy đủ từ gốc -> folder (mục 11.H). */
+  async breadcrumb(userId: string, folderId: string): Promise<BreadcrumbCrumb[]> {
+    const crumbs: BreadcrumbCrumb[] = [];
+    let current: string | null = folderId;
+    const guard = new Set<string>();
+    while (current) {
+      if (guard.has(current)) break; // an toàn chống vòng lặp dữ liệu hỏng
+      guard.add(current);
+      const folder: Folder | null = await this.prisma.folder.findUnique({ where: { id: current } });
+      if (!folder || folder.userId !== userId) break;
+      crumbs.unshift({ id: folder.id, name: folder.name });
+      current = folder.parentId;
+    }
+    return crumbs;
+  }
+
+  /** Tập id mọi folder hậu duệ (không gồm chính nó). Duyệt BFS theo parentId. */
+  async collectDescendantFolderIds(folderId: string): Promise<Set<string>> {
+    const result = new Set<string>();
+    let frontier = [folderId];
+    while (frontier.length) {
+      const children = await this.prisma.folder.findMany({
+        where: { parentId: { in: frontier } },
+        select: { id: true },
+      });
+      frontier = [];
+      for (const c of children) {
+        if (!result.has(c.id)) {
+          result.add(c.id);
+          frontier.push(c.id);
+        }
+      }
+    }
+    return result;
+  }
+}
