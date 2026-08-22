@@ -1,43 +1,13 @@
 <div class="auth-wrap">
-  <form class="auth-card" (submit)="submit($event)">
+  <div class="auth-card">
     <h1 class="auth-title">{{ 'app.title' | t }}</h1>
     <p class="auth-sub">{{ 'auth.register' | t }}</p>
 
-    @if (error()) {
-      <div class="auth-error">{{ error() }}</div>
-    }
-    @if (info()) {
-      <div class="auth-info">{{ info()! | t }}</div>
-    }
-
-    <label class="auth-label">{{ 'auth.email' | t }}</label>
-    <input
-      class="auth-input"
-      type="email"
-      autocomplete="email"
-      [value]="email()"
-      (input)="email.set($any($event.target).value)"
-      required
-    />
-
-    <label class="auth-label">{{ 'auth.password' | t }}</label>
-    <input
-      class="auth-input"
-      type="password"
-      autocomplete="new-password"
-      [value]="password()"
-      (input)="password.set($any($event.target).value)"
-      required
-      minlength="6"
-    />
-
-    <button class="auth-btn" type="submit" [disabled]="loading()">
-      {{ loading() ? '…' : ('auth.register' | t) }}
-    </button>
+    <app-email-otp-form [mode]="'signup'" />
 
     <p class="auth-foot">
       {{ 'auth.haveAccount' | t }}
       <a routerLink="/login" class="auth-link">{{ 'auth.login' | t }}</a>
     </p>
-  </form>
+  </div>
 </div>

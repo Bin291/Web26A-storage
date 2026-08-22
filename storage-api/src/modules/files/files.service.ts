@@ -8,6 +8,7 @@ import { File, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { FoldersService, BreadcrumbCrumb } from '../folders/folders.service';
+import { ThumbnailService } from '../thumbnail/thumbnail.service';
 import { resolveNameCollision } from '../../common/utils/name-collision';
 import { ListFilesQueryDto } from './dto/file-query.dto';
 
@@ -27,7 +28,23 @@ export class FilesService {
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
     private readonly folders: FoldersService,
+    private readonly thumbnails: ThumbnailService,
   ) {}
+
+  /**
+   * Thay thumbnailUrl (đang là R2 key) bằng presigned URL cho client. Nếu chưa có
+   * thumbnail mà file là ảnh/video đã ready → sinh nền (backfill file cũ — mục 7).
+   */
+  private async withThumb<T extends File>(file: T): Promise<T> {
+    if (file.thumbnailUrl) {
+      const url = await this.storage.presignGet(file.thumbnailUrl, { expiresIn: 3600 });
+      return { ...file, thumbnailUrl: url };
+    }
+    if (file.status === 'ready' && this.thumbnails.supports(file.extension)) {
+      this.thumbnails.generateInBackground(file);
+    }
+    return file;
+  }
 
   async assertOwned(fileId: string, userId: string): Promise<File> {
     const file = await this.prisma.file.findUnique({ where: { id: fileId } });
@@ -62,29 +79,30 @@ export class FilesService {
       orderBy: { [sortField]: order },
     });
 
-    if (!q.withPath) return files;
-
-    // Đính breadcrumb đầy đủ cho mỗi file (mục 11.H #37) — cache theo folderId.
+    // Đính presigned thumbnail URL cho mọi file; kèm breadcrumb nếu withPath.
     const cache = new Map<string, BreadcrumbCrumb[]>();
     const result: FileWithPath[] = [];
     for (const f of files) {
+      const withThumb = await this.withThumb(f);
+      if (!q.withPath) {
+        result.push(withThumb);
+        continue;
+      }
       let path: BreadcrumbCrumb[] = [];
       if (f.folderId) {
         if (!cache.has(f.folderId)) {
-          cache.set(
-            f.folderId,
-            await this.folders.breadcrumb(userId, f.folderId),
-          );
+          cache.set(f.folderId, await this.folders.breadcrumb(userId, f.folderId));
         }
         path = cache.get(f.folderId)!;
       }
-      result.push({ ...f, folderPath: path });
+      result.push({ ...withThumb, folderPath: path });
     }
     return result;
   }
 
   async get(userId: string, fileId: string): Promise<File> {
-    return this.assertOwned(fileId, userId);
+    const file = await this.assertOwned(fileId, userId);
+    return this.withThumb(file);
   }
 
   async rename(userId: string, fileId: string, name: string): Promise<File> {

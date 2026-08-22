@@ -12,6 +12,11 @@ export const routes: Routes = [
     canActivate: [guestGuard],
     loadComponent: () => import('./features/auth/register/register').then((m) => m.Register),
   },
+  // Callback Magic Link / OAuth — KHÔNG guard (chưa có session lúc quay lại)
+  {
+    path: 'auth/callback',
+    loadComponent: () => import('./features/auth/callback/callback').then((m) => m.AuthCallback),
+  },
   // Trang công khai — ngoài authGuard (mục 12.F)
   {
     path: 's/:token',

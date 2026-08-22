@@ -1,10 +1,10 @@
-import { Module } from '@nestjs/common';
-import { PassportModule } from '@nestjs/passport';
-import { JwtStrategy } from './jwt.strategy';
+import { Global, Module } from '@nestjs/common';
+import { SupabaseJwtService } from './supabase-jwt.service';
 
+/** Cung cấp SupabaseJwtService cho guard toàn cục (verify JWKS). */
+@Global()
 @Module({
-  imports: [PassportModule.register({ defaultStrategy: 'jwt' })],
-  providers: [JwtStrategy],
-  exports: [PassportModule],
+  providers: [SupabaseJwtService],
+  exports: [SupabaseJwtService],
 })
 export class AuthModule {}

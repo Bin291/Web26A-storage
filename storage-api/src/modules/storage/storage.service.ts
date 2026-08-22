@@ -192,6 +192,14 @@ export class StorageService {
     return Buffer.concat(chunks);
   }
 
+  /** Tải object về file tạm (cho ffmpeg đọc frame video — mục 7.C). */
+  async downloadToFile(key: string, filePath: string): Promise<void> {
+    const { createWriteStream } = await import('node:fs');
+    const { pipeline } = await import('node:stream/promises');
+    const stream = await this.getObjectStream(key);
+    await pipeline(stream, createWriteStream(filePath));
+  }
+
   /** Xoá nhiều object 1 lần (mục 7.E — gốc + thumbnail + artifact). */
   async deleteObjects(keys: string[]): Promise<void> {
     if (keys.length === 0) return;

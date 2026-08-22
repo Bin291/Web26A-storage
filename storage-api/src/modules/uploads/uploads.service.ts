@@ -10,6 +10,7 @@ import { File } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService, CompletedPart } from '../storage/storage.service';
 import { FoldersService } from '../folders/folders.service';
+import { ThumbnailService } from '../thumbnail/thumbnail.service';
 import {
   resolveNameCollision,
   extractExtension,
@@ -33,6 +34,7 @@ export class UploadsService {
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
     private readonly folders: FoldersService,
+    private readonly thumbnails: ThumbnailService,
     config: ConfigService,
   ) {
     this.maxFileSize =
@@ -142,6 +144,10 @@ export class UploadsService {
       data: { status: 'ready' },
     });
     this.logger.log(`Upload hoàn tất: ${fileId} (${updated.name})`);
+    // Sinh thumbnail nền (không chặn response — mục 7.A).
+    if (this.thumbnails.supports(updated.extension)) {
+      this.thumbnails.generateInBackground(updated);
+    }
     return updated;
   }
 

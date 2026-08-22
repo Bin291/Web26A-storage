@@ -1,10 +1,21 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal, OnInit } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { Router } from '@angular/router';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  signal,
+  OnInit,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { filter } from 'rxjs/operators';
 import { AuthService } from '../../core/services/auth.service';
 import { FilesApiService } from '../../core/services/files-api.service';
 import { LangService } from '../../core/i18n/lang.service';
 import { SettingsService } from '../../core/services/settings.service';
+import { RefreshService } from '../../core/services/refresh.service';
 import { NotificationService, AppNotification } from '../../core/services/notification.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { CATEGORIES, CategoryKey, categoryOf } from '../../core/util/file-types';
@@ -28,6 +39,8 @@ export class MainLayout implements OnInit {
   private readonly filesApi = inject(FilesApiService);
   private readonly lang = inject(LangService);
   private readonly router = inject(Router);
+  private readonly refresh = inject(RefreshService);
+  private readonly destroyRef = inject(DestroyRef);
   protected readonly settings = inject(SettingsService);
   protected readonly notifications = inject(NotificationService);
 
@@ -61,8 +74,22 @@ export class MainLayout implements OnInit {
     return counts;
   });
 
+  constructor() {
+    // Nạp lại số đếm khi có tín hiệu dữ liệu đổi (upload/xoá).
+    effect(() => {
+      this.refresh.filesChanged();
+      this.loadStats();
+    });
+    // Nạp lại số đếm mỗi khi điều hướng (chuyển lăng kính/thư mục).
+    this.router.events
+      .pipe(
+        filter((e) => e instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(() => this.loadStats());
+  }
+
   ngOnInit(): void {
-    this.loadStats();
     void this.notifications.refresh();
   }
 

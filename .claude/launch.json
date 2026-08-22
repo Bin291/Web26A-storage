@@ -4,8 +4,9 @@
     {
       "name": "storage-web",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "storage", "start"],
-      "port": 4200
+      "runtimeArgs": ["--prefix", "storage", "start", "--", "--port", "4321"],
+      "port": 4321,
+      "autoPort": false
     }
   ]
 }

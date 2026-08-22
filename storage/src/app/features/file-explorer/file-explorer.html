@@ -1,5 +1,6 @@
 <div
   class="explorer-root"
+  (dragenter)="onDragEnter($event)"
   (dragover)="onDragOver($event)"
   (dragleave)="onDragLeave()"
   (drop)="onDrop($event)"
@@ -55,14 +56,13 @@
   @if (loading()) {
     <div class="empty">{{ 'files.loading' | t }}</div>
   } @else if (folders().length === 0 && files().length === 0) {
-    <label class="empty" [class.drag-active]="dragOver()">
+    <div class="empty" style="cursor: default">
       <div style="font-size: 40px">
-        <span class="mi" style="font-size: 40px">{{ dragOver() ? 'upload' : 'folder_open' }}</span>
+        <span class="mi" style="font-size: 40px">folder_open</span>
       </div>
       <p>{{ 'files.empty' | t }}</p>
       <p style="font-size: 13px">{{ 'files.emptyHint' | t }}</p>
-      <input type="file" multiple hidden (change)="onPick($event)" />
-    </label>
+    </div>
   } @else if (settings.viewMode() === 'grid') {
     <div class="file-grid">
       @for (folder of folders(); track folder.id) {
@@ -141,6 +141,20 @@
         }
       </tbody>
     </table>
+  }
+
+  <!-- Overlay "thả tệp vào đây" — chỉ hiện khi kéo file (pointer-events: none) -->
+  @if (dragOver()) {
+    <div class="drop-overlay">
+      <div class="drop-card">
+        <span class="mi drop-icon">cloud_upload</span>
+        <div class="drop-title">{{ 'files.dropHere' | t }}</div>
+        <div class="drop-btn">
+          <span class="mi" style="font-size: 18px">lock</span>
+          {{ 'common.root' | t }}
+        </div>
+      </div>
+    </div>
   }
 </div>
 

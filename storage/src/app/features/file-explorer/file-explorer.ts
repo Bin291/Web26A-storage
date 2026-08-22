@@ -13,6 +13,7 @@ import { firstValueFrom } from 'rxjs';
 import { FilesApiService } from '../../core/services/files-api.service';
 import { FoldersApiService } from '../../core/services/folders-api.service';
 import { UploadService, UploadTask } from '../../core/services/upload.service';
+import { RefreshService } from '../../core/services/refresh.service';
 import { SettingsService } from '../../core/services/settings.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { ShareDialog, ShareTarget } from '../share/share-dialog';
@@ -22,7 +23,7 @@ import {
   ListFilesQuery,
   StoredFile,
 } from '../../core/models/file.model';
-import { CATEGORIES, categoryByKey, formatBytes, iconOf } from '../../core/util/file-types';
+import { CATEGORIES, categoryByKey, categoryOf, formatBytes, iconOf } from '../../core/util/file-types';
 
 type Mode = 'folder' | 'type' | 'starred' | 'recent';
 
@@ -48,6 +49,7 @@ export class FileExplorer {
   private readonly filesApi = inject(FilesApiService);
   private readonly foldersApi = inject(FoldersApiService);
   private readonly uploadService = inject(UploadService);
+  private readonly refresh = inject(RefreshService);
   protected readonly settings = inject(SettingsService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -99,10 +101,27 @@ export class FileExplorer {
     });
   }
 
+  private thumbRetries = 0;
+
   private syncFromParams(): void {
     this.folderId.set(this.route.snapshot.paramMap.get('folderId'));
     this.category.set(this.route.snapshot.paramMap.get('category'));
+    this.thumbRetries = 0;
     void this.load();
+  }
+
+  /** Thumbnail sinh nền ở backend — nạp lại vài lần để card tự hiện khi có (mục 7). */
+  private scheduleThumbRefresh(): void {
+    if (this.thumbRetries >= 3) return;
+    const pending = this.files().some(
+      (f) =>
+        f.status === 'ready' &&
+        !f.thumbnailUrl &&
+        (categoryOf(f.extension) === 'image' || categoryOf(f.extension) === 'video'),
+    );
+    if (!pending) return;
+    this.thumbRetries++;
+    setTimeout(() => void this.load(), 3000);
   }
 
   async load(): Promise<void> {
@@ -130,6 +149,7 @@ export class FileExplorer {
       this.files.set([]);
     } finally {
       this.loading.set(false);
+      this.scheduleThumbRefresh();
     }
   }
 
@@ -263,6 +283,7 @@ export class FileExplorer {
     if (m.kind === 'file') await firstValueFrom(this.filesApi.trash(m.id));
     else await firstValueFrom(this.foldersApi.trash(m.id));
     void this.load();
+    this.refresh.bump(); // cập nhật số đếm sidebar
   }
 
   // --- Upload ---
@@ -272,20 +293,38 @@ export class FileExplorer {
     input.value = '';
   }
 
-  onDrop(event: DragEvent): void {
-    event.preventDefault();
-    this.dragOver.set(false);
-    const files = event.dataTransfer?.files;
-    if (files && files.length) void this.uploadFileList(Array.from(files));
+  // Đếm depth để overlay không nhấp nháy khi rê qua các card con.
+  private dragDepth = 0;
+
+  private isFileDrag(event: DragEvent): boolean {
+    return !!event.dataTransfer && Array.from(event.dataTransfer.types).includes('Files');
   }
 
-  onDragOver(event: DragEvent): void {
+  onDragEnter(event: DragEvent): void {
+    if (!this.isFileDrag(event)) return;
     event.preventDefault();
+    this.dragDepth++;
     this.dragOver.set(true);
   }
 
+  onDragOver(event: DragEvent): void {
+    if (this.isFileDrag(event)) event.preventDefault(); // cho phép thả
+  }
+
   onDragLeave(): void {
+    this.dragDepth--;
+    if (this.dragDepth <= 0) {
+      this.dragDepth = 0;
+      this.dragOver.set(false);
+    }
+  }
+
+  onDrop(event: DragEvent): void {
+    event.preventDefault();
+    this.dragDepth = 0;
     this.dragOver.set(false);
+    const files = event.dataTransfer?.files;
+    if (files && files.length) void this.uploadFileList(Array.from(files));
   }
 
   /** Upload nhiều file; giữ cấu trúc thư mục nếu có webkitRelativePath (mục 2.1). */
@@ -307,7 +346,10 @@ export class FileExplorer {
       const task = this.uploadService.createTask(file);
       this.uploads.update((list) => [...list, task]);
       void this.uploadService.run(task, file, targetFolderId).then((result) => {
-        if (result) void this.load();
+        if (result) {
+          void this.load();
+          this.refresh.bump(); // cập nhật số đếm sidebar
+        }
       });
     }
   }

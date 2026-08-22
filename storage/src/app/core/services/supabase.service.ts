@@ -34,8 +34,11 @@ export class SupabaseService {
   constructor() {
     this.client = createClient(environment.supabaseUrl, environment.supabaseAnonKey, {
       auth: {
+        // PKCE: an toàn hơn cho SPA; magic link/OAuth trả ?code= và tự đổi lấy
+        // session khi detectSessionInUrl = true (mục callback bên dưới).
+        flowType: 'pkce',
         persistSession: this.isBrowser,
-        autoRefreshToken: this.isBrowser,
+        autoRefreshToken: this.isBrowser, // tự gia hạn refresh token
         detectSessionInUrl: this.isBrowser,
         storage: this.isBrowser ? undefined : (new MemoryStorage() as unknown as Storage),
       },
@@ -57,6 +60,24 @@ export class SupabaseService {
 
   signUp(email: string, password: string) {
     return this.client.auth.signUp({ email, password });
+  }
+
+  /**
+   * Gửi email đăng nhập/đăng ký không mật khẩu (mục Auth): email chứa CẢ Magic
+   * Link lẫn mã OTP 6 số (nếu template có {{ .Token }}).
+   * - shouldCreateUser=false: chỉ đăng nhập user đã tồn tại (dùng cho /login)
+   * - shouldCreateUser=true: cho phép tạo mới (dùng cho /register)
+   */
+  signInWithOtp(email: string, shouldCreateUser: boolean, emailRedirectTo: string) {
+    return this.client.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser, emailRedirectTo },
+    });
+  }
+
+  /** Xác thực mã OTP 6 số người dùng nhập tay. */
+  verifyEmailOtp(email: string, token: string) {
+    return this.client.auth.verifyOtp({ email, token, type: 'email' });
   }
 
   signInWithGoogle(redirectTo: string) {

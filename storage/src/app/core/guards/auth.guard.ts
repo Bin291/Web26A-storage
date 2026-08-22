@@ -17,7 +17,8 @@ export const authGuard: CanActivateFn = (_route, state) => {
     filter((ready) => ready),
     take(1),
     map(() => {
-      if (auth.isAuthenticated()) return true;
+      // Chỉ cho vào khi đã đăng nhập VÀ email đã xác thực (email_confirmed_at).
+      if (auth.isAuthenticated() && auth.isEmailConfirmed()) return true;
       return router.createUrlTree(['/login'], { queryParams: { redirect: state.url } });
     }),
   );

@@ -1,44 +1,21 @@
 <div class="auth-wrap">
-  <form class="auth-card" (submit)="submit($event)">
+  <div class="auth-card">
     <h1 class="auth-title">{{ 'app.title' | t }}</h1>
     <p class="auth-sub">{{ 'auth.login' | t }}</p>
 
-    @if (error()) {
-      <div class="auth-error">{{ error() }}</div>
-    }
-
-    <label class="auth-label">{{ 'auth.email' | t }}</label>
-    <input
-      class="auth-input"
-      type="email"
-      autocomplete="email"
-      [value]="email()"
-      (input)="email.set($any($event.target).value)"
-      required
-    />
-
-    <label class="auth-label">{{ 'auth.password' | t }}</label>
-    <input
-      class="auth-input"
-      type="password"
-      autocomplete="current-password"
-      [value]="password()"
-      (input)="password.set($any($event.target).value)"
-      required
-    />
-
-    <button class="auth-btn" type="submit" [disabled]="loading()">
-      {{ loading() ? '…' : ('auth.login' | t) }}
-    </button>
+    <app-email-otp-form [mode]="'signin'" />
 
     <div class="auth-divider">
       <span>{{ 'auth.orContinueWith' | t }}</span>
     </div>
 
+    @if (googleError()) {
+      <div class="auth-error">{{ googleError() }}</div>
+    }
     <button
       class="auth-btn-google"
       type="button"
-      [disabled]="loading()"
+      [disabled]="googleLoading()"
       (click)="loginWithGoogle()"
     >
       <svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
@@ -66,5 +43,5 @@
       {{ 'auth.noAccount' | t }}
       <a routerLink="/register" class="auth-link">{{ 'auth.register' | t }}</a>
     </p>
-  </form>
+  </div>
 </div>

@@ -21,6 +21,11 @@ export class AuthService {
   readonly session = this._session.asReadonly();
   readonly ready = this._ready.asReadonly();
   readonly isAuthenticated = computed(() => this._session() !== null);
+  /** Email đã xác thực (email_confirmed_at có giá trị) — dùng cho guard. */
+  readonly isEmailConfirmed = computed(() => {
+    const u = this._session()?.user;
+    return !!u && !!u.email_confirmed_at;
+  });
 
   readonly profile = computed<AuthProfile | null>(() => {
     const s = this._session();
@@ -47,6 +52,8 @@ export class AuthService {
     try {
       const { data } = await this.supabase.getSession();
       this._session.set(data.session);
+      // Theo dõi mọi sự kiện auth: INITIAL_SESSION, SIGNED_IN, TOKEN_REFRESHED,
+      // USER_UPDATED (cập nhật session mới), SIGNED_OUT (xoá).
       this.supabase.onAuthChange((session) => this._session.set(session));
     } catch {
       this._session.set(null);
@@ -54,6 +61,24 @@ export class AuthService {
       // Luôn set ready để guard không treo dù Supabase chưa cấu hình.
       this._ready.set(true);
     }
+  }
+
+  /** Gửi mã OTP + Magic Link tới email. mode 'signin' = user phải tồn tại. */
+  async sendEmailOtp(email: string, mode: 'signin' | 'signup'): Promise<void> {
+    const emailRedirectTo = `${window.location.origin}/auth/callback`;
+    const { error } = await this.supabase.signInWithOtp(
+      email,
+      mode === 'signup',
+      emailRedirectTo,
+    );
+    if (error) throw error;
+  }
+
+  /** Xác thực mã OTP 6 số → tạo session ngay. */
+  async verifyEmailOtp(email: string, token: string): Promise<void> {
+    const { data, error } = await this.supabase.verifyEmailOtp(email, token);
+    if (error) throw error;
+    this._session.set(data.session);
   }
 
   async signIn(email: string, password: string): Promise<void> {
@@ -70,9 +95,12 @@ export class AuthService {
     return { needsConfirmation: data.session === null };
   }
 
-  /** Điều hướng sang Google OAuth; session được set khi trình duyệt quay lại app (detectSessionInUrl). */
-  async signInWithGoogle(redirectPath = '/files'): Promise<void> {
-    const redirectTo = `${window.location.origin}${redirectPath}`;
+  /**
+   * Điều hướng sang Google OAuth. Quay lại qua /auth/callback (mang theo đích cần
+   * tới) — chỉ cần allow-list 1 Redirect URL. Session set khi client detectSessionInUrl.
+   */
+  async signInWithGoogle(target = '/files'): Promise<void> {
+    const redirectTo = `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(target)}`;
     const { error } = await this.supabase.signInWithGoogle(redirectTo);
     if (error) throw error;
   }
